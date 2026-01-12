@@ -17,10 +17,19 @@ const pageFrame = document.getElementById('pageFrame');
 const clickMarker = document.getElementById('clickMarker');
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
+const replayInTabBtn = document.getElementById('replayInTabBtn');
+const speedSelect = document.getElementById('speedSelect');
 const subtitleDisplay = document.getElementById('subtitleDisplay');
 const corsWarning = document.getElementById('corsWarning');
 const fakeCursor = document.getElementById('fakeCursor');
+const frameBlockedWarning = document.getElementById('frameBlockedWarning');
+const openInTabBtn = document.getElementById('openInTabBtn');
+const dismissBlockedBtn = document.getElementById('dismissBlockedBtn');
 let corsWarningShown = false;
+let frameLoadTimeout = null;
+let currentUrl = null;
+let replayTabId = null;
+let replaySpeed = 1;
 
 // Load storyboard from chrome.storage.local
 async function loadStoryboardFromStorage(recordingId) {
@@ -149,6 +158,53 @@ window.parent.postMessage({ type: 'PREVIEW_READY' }, '*');
 
 startBtn.addEventListener('click', startReplay);
 stopBtn.addEventListener('click', stopReplay);
+replayInTabBtn.addEventListener('click', startReplayInTab);
+
+// Update replay speed
+speedSelect.addEventListener('change', (e) => {
+  replaySpeed = parseFloat(e.target.value);
+  console.log('[Preview] Replay speed changed to:', replaySpeed + 'x');
+  status.textContent = `Speed: ${replaySpeed}x`;
+});
+
+// Handle frame blocked warning buttons
+openInTabBtn.addEventListener('click', () => {
+  if (currentUrl) {
+    window.open(currentUrl, '_blank');
+  }
+});
+
+dismissBlockedBtn.addEventListener('click', () => {
+  frameBlockedWarning.style.display = 'none';
+});
+
+// Detect iframe load errors
+pageFrame.addEventListener('load', () => {
+  console.log('[Preview] Iframe loaded successfully');
+  if (frameLoadTimeout) {
+    clearTimeout(frameLoadTimeout);
+    frameLoadTimeout = null;
+  }
+
+  // Check if we can access the iframe content
+  setTimeout(() => {
+    try {
+      const iframeDoc = pageFrame.contentDocument || pageFrame.contentWindow.document;
+      if (!iframeDoc) {
+        console.warn('[Preview] Cannot access iframe content after load');
+        showCorsWarning();
+      }
+    } catch (error) {
+      console.warn('[Preview] CORS error accessing iframe:', error);
+      showCorsWarning();
+    }
+  }, 100);
+});
+
+pageFrame.addEventListener('error', () => {
+  console.error('[Preview] Iframe failed to load');
+  showFrameBlockedWarning();
+});
 
 function startReplay() {
   if (!storyboard) {
@@ -163,10 +219,33 @@ function startReplay() {
   eventLog.innerHTML = '<div style="color: #1976d2; font-weight: bold;">▶️ Replay Started</div>';
   status.textContent = 'Playing...';
 
+  // Hide any previous warnings
+  frameBlockedWarning.style.display = 'none';
+  corsWarning.style.display = 'none';
+  corsWarningShown = false;
+
   // Reset to initial page
   const initialUrl = storyboard.meta.baseUrl || storyboard.timeline.find(e => e.type === 'navigate')?.url;
   if (initialUrl) {
+    currentUrl = initialUrl;
     pageFrame.src = initialUrl;
+
+    // Set timeout to detect frame blocking
+    if (frameLoadTimeout) {
+      clearTimeout(frameLoadTimeout);
+    }
+    frameLoadTimeout = setTimeout(() => {
+      try {
+        const iframeDoc = pageFrame.contentDocument || pageFrame.contentWindow.document;
+        if (!iframeDoc || iframeDoc.location.href === 'about:blank') {
+          console.warn('[Preview] Initial iframe failed to load - likely blocked by X-Frame-Options');
+          showFrameBlockedWarning();
+        }
+      } catch (error) {
+        console.warn('[Preview] Initial iframe blocked or CORS issue:', error);
+        showFrameBlockedWarning();
+      }
+    }, 5000);
   }
 
   // Schedule all subtitles
@@ -218,6 +297,12 @@ function stopReplay() {
     replayTimeout = null;
   }
 
+  // Clear frame load timeout
+  if (frameLoadTimeout) {
+    clearTimeout(frameLoadTimeout);
+    frameLoadTimeout = null;
+  }
+
   // Clear all subtitle timeouts
   activeSubtitles.forEach(timeout => clearTimeout(timeout));
   activeSubtitles = [];
@@ -246,6 +331,96 @@ function stopReplay() {
   fakeCursor.style.display = 'none';
   status.textContent = 'Stopped';
   eventLog.innerHTML += '<div style="color: #c62828; font-weight: bold; margin-top: 8px;">⏹️ Replay Stopped</div>';
+}
+
+async function startReplayInTab() {
+  if (!storyboard) {
+    await showModal('No storyboard loaded', {
+      title: 'Error',
+      icon: '❌'
+    });
+    return;
+  }
+
+  console.log('[Preview] Starting replay in new tab');
+
+  try {
+    // Get the initial URL
+    const initialUrl = storyboard.meta.baseUrl || storyboard.timeline.find(e => e.type === 'navigate')?.url;
+
+    if (!initialUrl) {
+      await showModal('No URL found in storyboard', {
+        title: 'Error',
+        icon: '❌'
+      });
+      return;
+    }
+
+    // Create a new tab
+    chrome.tabs.create({ url: initialUrl, active: true }, async (tab) => {
+      replayTabId = tab.id;
+      console.log('[Preview] Created tab:', tab.id);
+
+      // Register tab with background script for navigation tracking
+      chrome.runtime.sendMessage({
+        type: 'REGISTER_REPLAY_TAB',
+        tabId: replayTabId
+      }, (response) => {
+        console.log('[Preview] Replay tab registered:', response);
+      });
+
+      // Wait for tab to load
+      chrome.tabs.onUpdated.addListener(function tabLoadListener(tabId, changeInfo) {
+        if (tabId === replayTabId && changeInfo.status === 'complete') {
+          chrome.tabs.onUpdated.removeListener(tabLoadListener);
+
+          console.log('[Preview] Tab loaded, injecting replay script');
+
+          // Inject the replay script
+          chrome.scripting.executeScript({
+            target: { tabId: replayTabId },
+            files: ['scripts/replay.js']
+          }, () => {
+            if (chrome.runtime.lastError) {
+              console.error('[Preview] Failed to inject script:', chrome.runtime.lastError);
+              showModal('Failed to inject replay script: ' + chrome.runtime.lastError.message, {
+                title: 'Error',
+                icon: '❌'
+              });
+              return;
+            }
+
+            console.log('[Preview] Script injected, sending storyboard');
+
+            // Send the storyboard to the tab after a short delay
+            setTimeout(() => {
+              chrome.tabs.sendMessage(replayTabId, {
+                type: 'START_TAB_REPLAY',
+                storyboard: storyboard,
+                speed: replaySpeed
+              }, (response) => {
+                if (chrome.runtime.lastError) {
+                  console.error('[Preview] Failed to send message:', chrome.runtime.lastError);
+                } else {
+                  console.log('[Preview] Replay started in tab:', response);
+                  showModal('Replay started in new tab!', {
+                    title: 'Success',
+                    icon: '✅'
+                  });
+                }
+              });
+            }, 500);
+          });
+        }
+      });
+    });
+  } catch (error) {
+    console.error('[Preview] Error starting tab replay:', error);
+    await showModal('Failed to start tab replay: ' + error.message, {
+      title: 'Error',
+      icon: '❌'
+    });
+  }
 }
 
 function executeNextEvent() {
@@ -279,8 +454,11 @@ function executeNextEvent() {
     delay = event.durationMs || 1000;
   }
 
+  // Apply speed multiplier
+  delay = delay / replaySpeed;
+
   // Update status
-  status.textContent = `Event ${currentEventIndex + 1}/${storyboard.timeline.length}`;
+  status.textContent = `Event ${currentEventIndex + 1}/${storyboard.timeline.length} (${replaySpeed}x)`;
 
   // Schedule next event
   currentEventIndex++;
@@ -290,8 +468,27 @@ function executeNextEvent() {
 function executeEvent(event) {
   // Handle navigation
   if (event.type === 'navigate' && event.url) {
+    currentUrl = event.url;
     pageFrame.src = event.url;
     console.log('[Preview] Navigating to:', event.url);
+
+    // Set timeout to detect if iframe doesn't load (X-Frame-Options blocking)
+    if (frameLoadTimeout) {
+      clearTimeout(frameLoadTimeout);
+    }
+    frameLoadTimeout = setTimeout(() => {
+      // Check if iframe is still loading after 5 seconds
+      try {
+        const iframeDoc = pageFrame.contentDocument || pageFrame.contentWindow.document;
+        if (!iframeDoc || iframeDoc.location.href === 'about:blank') {
+          console.warn('[Preview] Iframe failed to load within timeout - likely blocked by X-Frame-Options');
+          showFrameBlockedWarning();
+        }
+      } catch (error) {
+        console.warn('[Preview] Iframe blocked or CORS issue:', error);
+        showFrameBlockedWarning();
+      }
+    }, 5000);
   }
 
   // Execute click in iframe
@@ -894,6 +1091,14 @@ function moveCursor(x, y) {
   console.log('[Preview] Moving cursor to:', x, y);
 }
 
+// Show frame blocked warning
+function showFrameBlockedWarning() {
+  if (frameBlockedWarning) {
+    frameBlockedWarning.style.display = 'block';
+    console.log('[Preview] Showing frame blocked warning');
+  }
+}
+
 function formatTime(ms) {
   const seconds = Math.floor(ms / 1000);
   const millis = ms % 1000;
@@ -1145,5 +1350,16 @@ async function getWebcamFromDB(recordingId) {
     };
   });
 }
+
+// Cleanup: unregister replay tab when preview page closes
+window.addEventListener('beforeunload', () => {
+  if (replayTabId) {
+    console.log('[Preview] Unregistering replay tab on page close:', replayTabId);
+    chrome.runtime.sendMessage({
+      type: 'UNREGISTER_REPLAY_TAB',
+      tabId: replayTabId
+    });
+  }
+});
 
 console.log('[Preview] Preview script loaded and ready');

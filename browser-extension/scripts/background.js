@@ -824,4 +824,62 @@ chrome.webNavigation.onCompleted.addListener(async (details) => {
   }
 });
 
+// Track replay tabs
+let replayTabs = new Set();
+
+// Listen for replay tab registrations
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'REGISTER_REPLAY_TAB') {
+    console.log('[Background] Registering replay tab:', message.tabId);
+    replayTabs.add(message.tabId);
+    sendResponse({ success: true });
+  } else if (message.type === 'UNREGISTER_REPLAY_TAB') {
+    console.log('[Background] Unregistering replay tab:', message.tabId);
+    replayTabs.delete(message.tabId);
+    sendResponse({ success: true });
+  }
+  return true;
+});
+
+// Listen for tab navigation to re-inject replay script
+chrome.webNavigation.onCommitted.addListener(async (details) => {
+  // Only handle replay tabs
+  if (!replayTabs.has(details.tabId)) {
+    return;
+  }
+
+  // Skip iframe navigations
+  if (details.frameId !== 0) {
+    return;
+  }
+
+  console.log('[Background] Replay tab navigated:', details.tabId, details.url);
+
+  try {
+    // Wait for page to be ready
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    // Re-inject replay script
+    await chrome.scripting.executeScript({
+      target: { tabId: details.tabId },
+      files: ['scripts/replay.js']
+    });
+
+    console.log('[Background] ✅ Replay script re-injected after navigation');
+
+  } catch (error) {
+    console.error('[Background] Error re-injecting replay script:', error);
+    // If injection fails, unregister the tab
+    replayTabs.delete(details.tabId);
+  }
+});
+
+// Clean up when tabs are closed
+chrome.tabs.onRemoved.addListener((tabId) => {
+  if (replayTabs.has(tabId)) {
+    console.log('[Background] Replay tab closed:', tabId);
+    replayTabs.delete(tabId);
+  }
+});
+
 console.log('[Background] Service worker initialized');

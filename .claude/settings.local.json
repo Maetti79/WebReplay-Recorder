@@ -13,7 +13,11 @@
       "WebFetch(domain:elevenlabs.io)",
       "WebFetch(domain:blocksign.io)",
       "Bash(awk:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(for file in /Users/dennismittmann/Projects/browser-extension/*.md)",
+      "Bash(done)",
+      "Bash(ls:*)",
+      "Bash(for file in /Users/dennismittmann/Projects/*.md)"
     ]
   }
 }
