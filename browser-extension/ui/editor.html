@@ -188,16 +188,13 @@
     /* Sidebar */
     .sidebar {
       width: 320px;
-      background: rgba(37, 37, 37, 0.4);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      background: #f9fafb;
+      border-right: 1px solid #e5e7eb;
       display: flex;
       flex-direction: column;
       overflow: hidden;
       transition: margin-left 0.3s ease, width 0.3s ease;
       position: relative;
-      box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
     }
 
     .sidebar.collapsed {
@@ -212,27 +209,24 @@
       transform: translateY(-50%);
       width: 32px;
       height: 64px;
-      background: rgba(45, 45, 45, 0.5);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
       border-left: none;
-      border-radius: 0 10px 10px 0;
+      border-radius: 0 8px 8px 0;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #888;
+      color: #6b7280;
       font-size: 16px;
-      transition: all 0.3s ease;
+      transition: all 0.3s ease-out;
       z-index: 10;
-      box-shadow: 2px 0 12px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
     .sidebar-toggle:hover {
-      background: rgba(61, 61, 61, 0.6);
-      color: #fff;
-      box-shadow: 2px 0 16px rgba(0, 0, 0, 0.3);
+      background: #f9fafb;
+      color: #2563eb;
     }
 
     .sidebar.collapsed .sidebar-toggle {
@@ -241,32 +235,31 @@
 
     .sidebar-section {
       padding: 16px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid #e5e7eb;
     }
 
     .sidebar-section h3 {
       font-size: 12px;
       font-weight: 600;
       text-transform: uppercase;
-      color: rgba(255, 255, 255, 0.7);
+      color: #6b7280;
       margin-bottom: 12px;
-      letter-spacing: 0.8px;
-      text-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      letter-spacing: 0.05em;
     }
 
     .info-row {
       display: flex;
       justify-content: space-between;
       padding: 8px 0;
-      font-size: 13px;
+      font-size: 14px;
     }
 
     .info-label {
-      color: #999;
+      color: #6b7280;
     }
 
     .info-value {
-      color: #fff;
+      color: #111827;
       font-weight: 500;
     }
 
@@ -278,29 +271,26 @@
     }
 
     .event-item {
-      background: rgba(45, 45, 45, 0.4);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
       border-radius: 8px;
       padding: 12px;
       margin-bottom: 10px;
       cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      transition: all 0.3s ease-out;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
     .event-item:hover {
-      border-color: rgba(16, 185, 129, 0.5);
-      background: rgba(50, 50, 50, 0.5);
+      border-color: #2563eb;
       transform: translateX(4px);
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+      box-shadow: 0 6px 12px rgba(37, 99, 235, 0.2);
     }
 
     .event-item.selected {
-      border-color: rgba(16, 185, 129, 0.7);
-      background: rgba(16, 185, 129, 0.15);
-      box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+      border-color: #2563eb;
+      background: #eff6ff;
+      box-shadow: 0 6px 12px rgba(37, 99, 235, 0.3);
     }
 
     .event-header {
@@ -314,19 +304,18 @@
       font-size: 12px;
       font-weight: 600;
       text-transform: uppercase;
-      color: #10b981;
-      text-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+      color: #2563eb;
     }
 
     .event-time {
       font-size: 11px;
-      color: #888;
-      font-family: monospace;
+      color: #6b7280;
+      font-family: 'Space Grotesk', monospace;
     }
 
     .event-details {
-      font-size: 12px;
-      color: #b0b0b0;
+      font-size: 13px;
+      color: #374151;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -341,15 +330,12 @@
     }
 
     .timeline-controls {
-      background: rgba(37, 37, 37, 0.4);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
+      background: #f9fafb;
       padding: 12px 20px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      border-bottom: 1px solid #e5e7eb;
       display: flex;
       gap: 12px;
       align-items: center;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
     }
 
     .zoom-control {
@@ -359,8 +345,9 @@
     }
 
     .zoom-control label {
-      font-size: 12px;
-      color: #888;
+      font-size: 13px;
+      color: #6b7280;
+      font-weight: 500;
     }
 
     .zoom-slider {
@@ -371,7 +358,7 @@
     .timeline-canvas {
       flex: 1;
       overflow: auto;
-      background: rgba(30, 30, 30, 0.3);
+      background: #fafafa;
       position: relative;
     }
 
@@ -384,99 +371,101 @@
 
     .timeline-ruler {
       height: 40px;
-      background: rgba(37, 37, 37, 0.4);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
       border-radius: 8px;
       position: relative;
       margin-bottom: 20px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
     .timeline-track {
       height: 60px;
-      background: rgba(37, 37, 37, 0.4);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
       border-radius: 8px;
       margin-bottom: 12px;
       position: relative;
       padding: 8px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
     .track-label {
       font-size: 11px;
       font-weight: 600;
-      color: #888;
+      color: #6b7280;
       margin-bottom: 6px;
       text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
 
     .timeline-event {
       position: absolute;
       height: 36px;
-      background: rgba(16, 185, 129, 0.4);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-      border: 1px solid rgba(16, 185, 129, 0.5);
-      border-radius: 6px;
+      background: #dbeafe;
+      border: 2px solid #2563eb;
+      border-radius: 8px;
       padding: 6px 10px;
-      font-size: 11px;
-      color: white;
+      font-size: 12px;
+      color: #1e40af;
       cursor: move;
       user-select: none;
       display: flex;
       align-items: center;
       gap: 6px;
-      transition: all 0.3s ease;
+      transition: all 0.3s ease-out;
       overflow: hidden;
-      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      font-weight: 500;
     }
 
     .timeline-event:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
-      border-color: rgba(16, 185, 129, 0.8);
-      background: rgba(16, 185, 129, 0.5);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(37, 99, 235, 0.3);
+      border-color: #1d4ed8;
     }
 
     .timeline-event.dragging {
-      opacity: 0.7;
+      opacity: 0.6;
       cursor: grabbing;
     }
 
     .timeline-event.type-navigate {
-      background: rgba(16, 185, 129, 0.4);
-      border-color: rgba(16, 185, 129, 0.5);
+      background: #dbeafe;
+      border-color: #2563eb;
+      color: #1e40af;
     }
     .timeline-event.type-click {
-      background: rgba(59, 130, 246, 0.4);
-      border-color: rgba(59, 130, 246, 0.5);
+      background: #dbeafe;
+      border-color: #2563eb;
+      color: #1e40af;
     }
     .timeline-event.type-type {
-      background: rgba(168, 85, 247, 0.4);
-      border-color: rgba(168, 85, 247, 0.5);
+      background: #e0e7ff;
+      border-color: #6366f1;
+      color: #4338ca;
     }
     .timeline-event.type-pause {
-      background: rgba(249, 115, 22, 0.4);
-      border-color: rgba(249, 115, 22, 0.5);
+      background: #fed7aa;
+      border-color: #f97316;
+      color: #c2410c;
     }
     .timeline-event.type-keypress {
-      background: rgba(6, 182, 212, 0.4);
-      border-color: rgba(6, 182, 212, 0.5);
+      background: #cffafe;
+      border-color: #06b6d4;
+      color: #0e7490;
     }
     .timeline-event.type-scroll {
-      background: rgba(20, 184, 166, 0.4);
-      border-color: rgba(20, 184, 166, 0.5);
+      background: #ccfbf1;
+      border-color: #14b8a6;
+      color: #0f766e;
     }
 
     /* Timeline Audio */
     .timeline-audio {
-      background: rgba(16, 185, 129, 0.4) !important;
-      border-color: rgba(16, 185, 129, 0.6) !important;
+      background: #d1fae5 !important;
+      border-color: #10b981 !important;
+      color: #047857 !important;
       height: 60px !important;
       display: flex;
       align-items: center;
@@ -485,33 +474,31 @@
     }
 
     .timeline-audio:hover {
-      background: rgba(16, 185, 129, 0.5) !important;
-      box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4) !important;
+      background: #a7f3d0 !important;
+      box-shadow: 0 6px 12px rgba(16, 185, 129, 0.3) !important;
     }
 
     /* Timeline Subtitle */
     .timeline-subtitle {
-      background: rgba(168, 85, 247, 0.4) !important;
-      border-color: rgba(168, 85, 247, 0.6) !important;
+      background: #e0e7ff !important;
+      border-color: #6366f1 !important;
+      color: #4338ca !important;
     }
 
     .timeline-subtitle:hover {
-      background: rgba(168, 85, 247, 0.5) !important;
-      box-shadow: 0 6px 16px rgba(168, 85, 247, 0.4) !important;
+      background: #c7d2fe !important;
+      box-shadow: 0 6px 12px rgba(99, 102, 241, 0.3) !important;
     }
 
     /* Properties panel */
     .properties {
       width: 300px;
-      background: rgba(37, 37, 37, 0.4);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-left: 1px solid rgba(255, 255, 255, 0.08);
+      background: #f9fafb;
+      border-left: 1px solid #e5e7eb;
       overflow-y: auto;
       padding: 16px;
       transition: margin-right 0.3s ease, width 0.3s ease;
       position: relative;
-      box-shadow: -4px 0 24px rgba(0, 0, 0, 0.2);
     }
 
     .properties.collapsed {
@@ -527,27 +514,24 @@
       transform: translateY(-50%);
       width: 32px;
       height: 64px;
-      background: rgba(45, 45, 45, 0.5);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
       border-right: none;
-      border-radius: 10px 0 0 10px;
+      border-radius: 8px 0 0 8px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #888;
+      color: #6b7280;
       font-size: 16px;
-      transition: all 0.3s ease;
+      transition: all 0.3s ease-out;
       z-index: 10;
-      box-shadow: -2px 0 12px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
     .properties-toggle:hover {
-      background: rgba(61, 61, 61, 0.6);
-      color: #fff;
-      box-shadow: -2px 0 16px rgba(0, 0, 0, 0.3);
+      background: #f9fafb;
+      color: #2563eb;
     }
 
     .properties.collapsed .properties-toggle {
@@ -555,10 +539,10 @@
     }
 
     .properties h3 {
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 600;
       margin-bottom: 16px;
-      color: #fff;
+      color: #111827;
     }
 
     .property-group {
@@ -567,9 +551,9 @@
 
     .property-group label {
       display: block;
-      font-size: 12px;
-      color: #888;
-      margin-bottom: 6px;
+      font-size: 13px;
+      color: #374151;
+      margin-bottom: 8px;
       font-weight: 500;
     }
 
@@ -578,46 +562,68 @@
     .property-group select {
       width: 100%;
       padding: 10px 12px;
-      background: rgba(45, 45, 45, 0.4);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
       border-radius: 8px;
-      color: #e0e0e0;
-      font-size: 13px;
-      font-family: inherit;
-      transition: all 0.2s ease;
-      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+      color: #111827;
+      font-size: 14px;
+      font-family: 'Space Grotesk', sans-serif;
+      transition: all 0.3s ease-out;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
     .property-group input:focus,
     .property-group textarea:focus,
     .property-group select:focus {
       outline: none;
-      border-color: rgba(16, 185, 129, 0.6);
-      background: rgba(45, 45, 45, 0.5);
-      box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
     }
 
     .property-group textarea {
       resize: vertical;
       min-height: 60px;
-      font-family: 'Monaco', 'Courier New', monospace;
+      font-family: 'Space Grotesk', monospace;
     }
 
     /* Audio waveform */
     .waveform-container {
       height: 80px;
-      background: #2d2d2d;
-      border-radius: 4px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
       margin-top: 12px;
       padding: 8px;
       position: relative;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
     .waveform-canvas {
       width: 100%;
       height: 100%;
+    }
+
+    /* Animations */
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(400px);
+        opacity: 0;
+      }
     }
 
     /* Empty state */
@@ -627,7 +633,7 @@
       align-items: center;
       justify-content: center;
       height: 100%;
-      color: #666;
+      color: #6b7280;
       padding: 40px;
       text-align: center;
     }
@@ -635,19 +641,19 @@
     .empty-state-icon {
       font-size: 48px;
       margin-bottom: 16px;
-      opacity: 0.5;
+      opacity: 0.6;
     }
 
     .empty-state h2 {
-      font-size: 18px;
+      font-size: 20px;
       font-weight: 600;
       margin-bottom: 8px;
-      color: #888;
+      color: #111827;
     }
 
     .empty-state p {
-      font-size: 14px;
-      color: #666;
+      font-size: 15px;
+      color: #6b7280;
       margin-bottom: 20px;
     }
 
@@ -658,40 +664,38 @@
 
     /* Voice select dropdown */
     .voice-select:hover {
-      border-color: rgba(16, 185, 129, 0.4);
-      background: rgba(45, 45, 45, 0.5);
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+      border-color: #2563eb;
     }
 
     .voice-select:focus {
       outline: none;
-      border-color: rgba(16, 185, 129, 0.6);
-      box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
     }
 
     .voice-select option {
-      background: #2d2d2d;
-      color: #e0e0e0;
+      background: #ffffff;
+      color: #111827;
       padding: 8px;
     }
 
     /* Scrollbar */
     ::-webkit-scrollbar {
-      width: 10px;
-      height: 10px;
+      width: 12px;
+      height: 12px;
     }
 
     ::-webkit-scrollbar-track {
-      background: #1e1e1e;
+      background: #f9fafb;
     }
 
     ::-webkit-scrollbar-thumb {
-      background: #424242;
-      border-radius: 5px;
+      background: #d1d5db;
+      border-radius: 6px;
     }
 
     ::-webkit-scrollbar-thumb:hover {
-      background: #555;
+      background: #9ca3af;
     }
 
     /* Playhead */
@@ -768,7 +772,7 @@
         <div class="sidebar-section" style="flex: 1; overflow: hidden; display: flex; flex-direction: column;">
           <h3>Events</h3>
           <div style="margin-bottom: 12px; display: flex; gap: 8px;">
-            <select id="addEventType" style="flex: 1; padding: 6px 8px; background: rgba(45, 45, 45, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; color: #e0e0e0; font-size: 11px; cursor: pointer;">
+            <select id="addEventType" style="flex: 1; padding: 8px 10px; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; color: #111827; font-size: 13px; cursor: pointer; font-family: 'Space Grotesk', sans-serif; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
               <option value="navigate">🌐 Navigate</option>
               <option value="click">👆 Click</option>
               <option value="type">⌨️ Type</option>
@@ -792,11 +796,11 @@
         </div>
 
         <!-- Subtitles Panel -->
-        <div id="subtitlesPanel" style="display: none; background: rgba(45, 45, 45, 0.4); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);">
-          <div style="padding: 12px; display: flex; justify-content: space-between; align-items: center;">
-            <h4 style="font-size: 12px; color: rgba(255, 255, 255, 0.7); text-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);">📝 SUBTITLES/TRANSCRIPTION</h4>
+        <div id="subtitlesPanel" style="display: none; background: #f9fafb; border-bottom: 1px solid #e5e7eb;">
+          <div style="padding: 16px; display: flex; justify-content: space-between; align-items: center;">
+            <h4 style="font-size: 13px; color: #374151; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">📝 SUBTITLES/TRANSCRIPTION</h4>
             <div style="display: flex; gap: 8px; align-items: center;">
-              <select id="elevenlabsVoiceSelect" class="voice-select" style="padding: 6px 10px; background: rgba(45, 45, 45, 0.4); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; color: #e0e0e0; font-size: 11px; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);" title="Select ElevenLabs Voice">
+              <select id="elevenlabsVoiceSelect" class="voice-select" style="padding: 8px 12px; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; color: #111827; font-size: 13px; cursor: pointer; transition: all 0.3s ease-out; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); font-family: 'Space Grotesk', sans-serif;" title="Select ElevenLabs Voice">
                 <option value="21m00Tcm4TlvDq8ikWAM">Rachel (Female)</option>
                 <option value="AZnzlk1XvdvUeBnXmlld">Domi (Female)</option>
                 <option value="EXAVITQu4vr4xnSDxMaL">Bella (Female)</option>
@@ -819,9 +823,9 @@
         </div>
 
         <!-- Replay Preview Panel -->
-        <div id="replayPreview" style="display: none; background: rgba(45, 45, 45, 0.4); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding: 12px; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <h4 style="font-size: 12px; color: rgba(255, 255, 255, 0.7); text-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);">🎬 REPLAY PREVIEW</h4>
+        <div id="replayPreview" style="display: none; background: #f9fafb; border-bottom: 1px solid #e5e7eb; padding: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h4 style="font-size: 13px; color: #374151; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">🎬 REPLAY PREVIEW</h4>
             <div style="display: flex; gap: 8px;">
               <button class="btn-primary btn-small" id="popOutPreviewBtn" title="Open preview in new tab">🗗 Pop Out</button>
               <button class="btn-primary btn-small" id="startPreviewBtn">▶️ Start</button>
@@ -829,7 +833,7 @@
               <button class="btn-icon btn-small" id="closePreviewBtn">✖️</button>
             </div>
           </div>
-          <iframe id="replayIframe" style="width: 100%; height: 400px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; background: #fff; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);"></iframe>
+          <iframe id="replayIframe" style="width: 100%; height: 400px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);"></iframe>
         </div>
 
         <div class="timeline-controls">
@@ -840,7 +844,7 @@
           </div>
           <button class="btn-icon" id="playBtn" title="Play">▶️</button>
           <button class="btn-icon" id="stopBtn" title="Stop">⏹️</button>
-          <span id="timeDisplay" style="color: #888; font-size: 13px; font-family: monospace; margin-left: 12px;">00:00.000</span>
+          <span id="timeDisplay" style="color: #6b7280; font-size: 14px; font-family: 'Space Grotesk', monospace; font-weight: 500; margin-left: 12px;">00:00.000</span>
         </div>
 
         <div class="timeline-canvas" id="timelineCanvas">
@@ -862,7 +866,7 @@
       <div class="properties" id="properties">
         <div class="properties-toggle" id="propertiesToggle" title="Toggle Properties Panel">▶</div>
         <h3>Properties</h3>
-        <p style="color: #666; font-size: 13px;">Select an event to edit its properties</p>
+        <p style="color: #6b7280; font-size: 14px;">Select an event to edit its properties</p>
       </div>
     </div>
   </div>
