@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Test Page</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        .box { padding: 20px; margin: 10px; background: #f0f0f0; }
+        input { margin: 10px; padding: 5px; }
+    </style>
+</head>
+<body>
+    <h1>WebReplay Debug Test Page</h1>
+    
+    <div class="box">
+        <h2>Test 1: Click This Button</h2>
+        <button id="testBtn" onclick="alert('Clicked!')">Click Me</button>
+    </div>
+    
+    <div class="box">
+        <h2>Test 2: Type Here</h2>
+        <input type="text" id="testInput" placeholder="Type something...">
+    </div>
+    
+    <div class="box">
+        <h2>Test 3: Check Console</h2>
+        <p>Open DevTools (F12) and check Console tab for:</p>
+        <ul>
+            <li>[Recorder] Content script loaded</li>
+            <li>[Recorder] Recording started</li>
+            <li>[Recorder] Click recorded</li>
+            <li>[Recorder] Input recorded</li>
+        </ul>
+    </div>
+    
+    <script>
+        console.log('[Test Page] Page loaded');
+        
+        // Test if content script is present
+        setTimeout(() => {
+            console.log('[Test Page] Checking for content script...');
+        }, 1000);
+    </script>
+</body>
+</html>

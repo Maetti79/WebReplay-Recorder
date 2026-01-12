@@ -1,0 +1,206 @@
+{
+  "version": "1.0",
+  "meta": {
+    "title": "Simple Local Demo",
+    "createdAt": "2026-01-09T22:00:00Z",
+    "viewport": {
+      "width": 1440,
+      "height": 900,
+      "deviceScaleFactor": 1
+    },
+    "baseUrl": "file://",
+    "locale": "en-US"
+  },
+  "assets": {
+    "micWav": null,
+    "uploads": []
+  },
+  "settings": {
+    "cursor": {
+      "visible": true,
+      "style": "default",
+      "smooth": 0.85,
+      "minMoveDurationMs": 120,
+      "maxSpeedPxPerSec": 1600
+    },
+    "typing": {
+      "charsPerSec": 8,
+      "randomize": 0.15,
+      "pasteLongTextOver": 80
+    },
+    "render": {
+      "fps": 60,
+      "resolution": {
+        "width": 1920,
+        "height": 1080
+      }
+    }
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "navigate",
+      "url": "file:///Users/dennismittmann/Projects/examples/test-page.html",
+      "waitFor": {
+        "type": "selector",
+        "value": "[data-testid='name-input']"
+      }
+    },
+    {
+      "t": 1000,
+      "type": "pause",
+      "durationMs": 500,
+      "reason": "Let page settle"
+    },
+    {
+      "t": 1500,
+      "type": "click",
+      "target": {
+        "selectors": [
+          "[data-testid='name-input']",
+          "input[name='name']",
+          "#name"
+        ],
+        "textHint": null,
+        "tag": "input",
+        "type": "text"
+      }
+    },
+    {
+      "t": 2000,
+      "type": "type",
+      "target": {
+        "selectors": [
+          "[data-testid='name-input']",
+          "input[name='name']"
+        ]
+      },
+      "text": "John Doe",
+      "typing": {
+        "charsPerSec": 8
+      }
+    },
+    {
+      "t": 3200,
+      "type": "click",
+      "target": {
+        "selectors": [
+          "[data-testid='email-input']",
+          "input[name='email']",
+          "#email"
+        ],
+        "textHint": null
+      }
+    },
+    {
+      "t": 3700,
+      "type": "type",
+      "target": {
+        "selectors": [
+          "[data-testid='email-input']",
+          "input[name='email']"
+        ]
+      },
+      "text": "john.doe@example.com",
+      "typing": {
+        "charsPerSec": 10
+      }
+    },
+    {
+      "t": 5500,
+      "type": "click",
+      "target": {
+        "selectors": [
+          "[data-testid='role-select']",
+          "select[name='role']",
+          "#role"
+        ],
+        "textHint": null
+      }
+    },
+    {
+      "t": 6000,
+      "type": "keypress",
+      "key": "ArrowDown",
+      "modifiers": {
+        "ctrl": false,
+        "alt": false,
+        "shift": false,
+        "meta": false
+      }
+    },
+    {
+      "t": 6300,
+      "type": "keypress",
+      "key": "Enter",
+      "modifiers": {
+        "ctrl": false,
+        "alt": false,
+        "shift": false,
+        "meta": false
+      }
+    },
+    {
+      "t": 7000,
+      "type": "click",
+      "target": {
+        "selectors": [
+          "[data-testid='message-textarea']",
+          "textarea[name='message']",
+          "#message"
+        ],
+        "textHint": null
+      }
+    },
+    {
+      "t": 7500,
+      "type": "type",
+      "target": {
+        "selectors": [
+          "[data-testid='message-textarea']",
+          "textarea[name='message']"
+        ]
+      },
+      "text": "This is a test of the WebReplay system. It captures interactions and replays them deterministically!",
+      "typing": {
+        "charsPerSec": 15
+      }
+    },
+    {
+      "t": 14000,
+      "type": "click",
+      "target": {
+        "selectors": [
+          "[data-testid='newsletter-checkbox']",
+          "input[name='newsletter']",
+          "#newsletter"
+        ],
+        "textHint": null
+      }
+    },
+    {
+      "t": 15000,
+      "type": "pause",
+      "durationMs": 1000,
+      "reason": "Review form"
+    },
+    {
+      "t": 16000,
+      "type": "click",
+      "target": {
+        "selectors": [
+          "[data-testid='submit-button']",
+          "button[type='submit']"
+        ],
+        "textHint": "Submit Form"
+      }
+    },
+    {
+      "t": 18000,
+      "type": "pause",
+      "durationMs": 2000,
+      "reason": "Show success message"
+    }
+  ],
+  "audioTrack": []
+}

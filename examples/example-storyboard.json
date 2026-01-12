@@ -1,0 +1,99 @@
+{
+  "version": "1.0",
+  "meta": {
+    "title": "Example Demo Recording",
+    "createdAt": "2026-01-09T22:00:00Z",
+    "viewport": {
+      "width": 1440,
+      "height": 900,
+      "deviceScaleFactor": 1
+    },
+    "baseUrl": "https://example.com",
+    "locale": "en-US"
+  },
+  "assets": {
+    "micWav": null,
+    "ttsMp3": null,
+    "webcamMp4": null,
+    "uploads": []
+  },
+  "settings": {
+    "cursor": {
+      "visible": true,
+      "style": "default",
+      "smooth": 0.85,
+      "minMoveDurationMs": 120,
+      "maxSpeedPxPerSec": 1600
+    },
+    "typing": {
+      "charsPerSec": 12,
+      "randomize": 0.15,
+      "pasteLongTextOver": 80
+    },
+    "render": {
+      "fps": 60,
+      "resolution": {
+        "width": 1920,
+        "height": 1080
+      }
+    }
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "type": "navigate",
+      "url": "https://www.google.com",
+      "waitFor": {
+        "type": "selector",
+        "value": "input[name='q']"
+      }
+    },
+    {
+      "t": 1500,
+      "type": "click",
+      "target": {
+        "selectors": [
+          "input[name='q']",
+          "textarea[name='q']",
+          "[aria-label*='Search']"
+        ],
+        "textHint": null,
+        "tag": "input",
+        "type": "text",
+        "placeholder": null
+      }
+    },
+    {
+      "t": 2000,
+      "type": "type",
+      "target": {
+        "selectors": [
+          "input[name='q']",
+          "textarea[name='q']"
+        ]
+      },
+      "text": "playwright automation",
+      "typing": {
+        "charsPerSec": 10
+      }
+    },
+    {
+      "t": 4200,
+      "type": "keypress",
+      "key": "Enter",
+      "modifiers": {
+        "ctrl": false,
+        "alt": false,
+        "shift": false,
+        "meta": false
+      }
+    },
+    {
+      "t": 7000,
+      "type": "pause",
+      "durationMs": 2000,
+      "reason": "Wait for results to load"
+    }
+  ],
+  "audioTrack": []
+}

@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(chmod:*)",
+      "Bash(node --version)",
+      "Bash(npm --version)",
+      "Bash(npm install)",
+      "Bash(tree:*)",
+      "Bash(node src/replay.js:*)",
+      "Bash(npx playwright install chromium)",
+      "Bash(node:*)",
+      "Bash(echo:*)",
+      "WebFetch(domain:elevenlabs.io)",
+      "WebFetch(domain:blocksign.io)",
+      "Bash(awk:*)"
+    ]
+  }
+}

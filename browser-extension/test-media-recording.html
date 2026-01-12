@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Media Recording Test</title>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .test-section {
+      margin: 20px 0;
+      padding: 15px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+    }
+    .test-section h2 {
+      margin-top: 0;
+      color: #1976d2;
+    }
+    .status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+    .warning { background: #fff3cd; color: #856404; }
+    .info { background: #d1ecf1; color: #0c5460; }
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background: #1976d2;
+      color: white;
+      font-size: 14px;
+    }
+    button:hover { background: #1565c0; }
+    pre {
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    .log {
+      max-height: 300px;
+      overflow-y: auto;
+      background: #000;
+      color: #0f0;
+      padding: 10px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔬 Media Recording Test Suite</h1>
+  <p>This will test the complete media recording pipeline.</p>
+
+  <div class="test-section">
+    <h2>Step 1: Check Extension</h2>
+    <button onclick="testExtension()">Test Extension Connection</button>
+    <div id="extensionStatus"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>Step 2: Test Recording</h2>
+    <button onclick="startTestRecording()">Start Recording (5 seconds)</button>
+    <button onclick="stopTestRecording()">Stop Recording</button>
+    <div id="recordingStatus"></div>
+    <div id="recordingLog" class="log"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>Step 3: Check IndexedDB</h2>
+    <button onclick="checkIndexedDB()">Check Offscreen IndexedDB</button>
+    <button onclick="checkBackgroundDB()">Check Background IndexedDB</button>
+    <div id="dbStatus"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>Step 4: Download Test</h2>
+    <button onclick="testDownload()">Test Download</button>
+    <div id="downloadStatus"></div>
+  </div>
+
+  <div class="test-section">
+    <h2>Console Logs</h2>
+    <div id="consoleLog" class="log"></div>
+  </div>
+
+  <script>
+    let currentRecordingId = null;
+    let testStartTime = null;
+
+    function log(message, type = 'info') {
+      const logDiv = document.getElementById('consoleLog');
+      const timestamp = new Date().toLocaleTimeString();
+      logDiv.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+      logDiv.scrollTop = logDiv.scrollHeight;
+      console.log(message);
+    }
+
+    async function testExtension() {
+      const statusDiv = document.getElementById('extensionStatus');
+      statusDiv.innerHTML = '<div class="status info">Testing extension...</div>';
+
+      try {
+        const response = await chrome.runtime.sendMessage({ type: 'GET_STATUS' });
+        log('✅ Extension connected: ' + JSON.stringify(response));
+        
+        statusDiv.innerHTML = `
+          <div class="status success">✅ Extension Connected</div>
+          <pre>${JSON.stringify(response, null, 2)}</pre>
+        `;
+      } catch (error) {
+        log('❌ Extension error: ' + error.message);
+        statusDiv.innerHTML = `<div class="status error">❌ Extension Error: ${error.message}</div>`;
+      }
+    }
+
+    async function startTestRecording() {
+      const statusDiv = document.getElementById('recordingStatus');
+      const logDiv = document.getElementById('recordingLog');
+      
+      statusDiv.innerHTML = '<div class="status info">Starting recording...</div>';
+      logDiv.innerHTML = '';
+
+      try {
+        testStartTime = Date.now();
+        
+        const response = await chrome.runtime.sendMessage({
+          type: 'START_RECORDING',
+          settings: {
+            audioEnabled: true,
+            webcamEnabled: true
+          }
+        });
+
+        log('Recording started: ' + JSON.stringify(response));
+        currentRecordingId = response.recordingId;
+
+        statusDiv.innerHTML = `
+          <div class="status success">✅ Recording Started</div>
+          <p>Recording ID: ${currentRecordingId}</p>
+          <p>Recording for 5 seconds...</p>
+        `;
+
+        // Monitor recording
+        const interval = setInterval(async () => {
+          const elapsed = Math.floor((Date.now() - testStartTime) / 1000);
+          logDiv.innerHTML = `<div>Recording... ${elapsed}s</div>`;
+
+          if (elapsed >= 5) {
+            clearInterval(interval);
+            await stopTestRecording();
+          }
+        }, 1000);
+
+      } catch (error) {
+        log('❌ Recording error: ' + error.message);
+        statusDiv.innerHTML = `<div class="status error">❌ Recording Error: ${error.message}</div>`;
+      }
+    }
+
+    async function stopTestRecording() {
+      const statusDiv = document.getElementById('recordingStatus');
+      
+      try {
+        log('Stopping recording...');
+        const response = await chrome.runtime.sendMessage({ type: 'STOP_RECORDING' });
+        log('Recording stopped: ' + JSON.stringify(response));
+
+        statusDiv.innerHTML += '<div class="status success">✅ Recording Stopped</div>';
+        
+        // Wait for media to finalize
+        setTimeout(() => {
+          statusDiv.innerHTML += '<div class="status info">⏳ Waiting for media to finalize (2 seconds)...</div>';
+        }, 500);
+
+        setTimeout(() => {
+          checkIndexedDB();
+        }, 3000);
+
+      } catch (error) {
+        log('❌ Stop error: ' + error.message);
+        statusDiv.innerHTML += `<div class="status error">❌ Stop Error: ${error.message}</div>`;
+      }
+    }
+
+    async function checkIndexedDB() {
+      const statusDiv = document.getElementById('dbStatus');
+      statusDiv.innerHTML = '<div class="status info">Checking IndexedDB...</div>';
+
+      try {
+        // Check offscreen IndexedDB
+        const databases = await indexedDB.databases();
+        log('Available databases: ' + JSON.stringify(databases.map(db => db.name)));
+
+        let html = '<h3>IndexedDB Status:</h3>';
+
+        // Check WebReplayOffscreenDB
+        const offscreenDB = await openDB('WebReplayOffscreenDB');
+        if (offscreenDB) {
+          const audioChunks = await getAllFromStore(offscreenDB, 'audioChunks');
+          const webcamChunks = await getAllFromStore(offscreenDB, 'webcamChunks');
+          
+          html += `<div class="status ${audioChunks.length > 0 ? 'success' : 'warning'}">
+            📦 Offscreen Audio Chunks: ${audioChunks.length}
+          </div>`;
+          html += `<div class="status ${webcamChunks.length > 0 ? 'success' : 'warning'}">
+            📦 Offscreen Webcam Chunks: ${webcamChunks.length}
+          </div>`;
+
+          if (audioChunks.length > 0) {
+            const totalSize = audioChunks.reduce((sum, record) => sum + record.chunk.size, 0);
+            html += `<p>Audio total size: ${totalSize} bytes</p>`;
+          }
+          if (webcamChunks.length > 0) {
+            const totalSize = webcamChunks.reduce((sum, record) => sum + record.chunk.size, 0);
+            html += `<p>Webcam total size: ${totalSize} bytes</p>`;
+          }
+
+          offscreenDB.close();
+        }
+
+        statusDiv.innerHTML = html;
+
+      } catch (error) {
+        log('❌ IndexedDB error: ' + error.message);
+        statusDiv.innerHTML = `<div class="status error">❌ IndexedDB Error: ${error.message}</div>`;
+      }
+    }
+
+    async function checkBackgroundDB() {
+      const statusDiv = document.getElementById('dbStatus');
+      
+      if (!currentRecordingId) {
+        statusDiv.innerHTML = '<div class="status warning">⚠️ No recording ID. Make a recording first.</div>';
+        return;
+      }
+
+      try {
+        // Request media chunks from background
+        const response = await chrome.runtime.sendMessage({
+          type: 'GET_MEDIA_CHUNKS',
+          recordingId: currentRecordingId
+        });
+
+        log('Got media chunks: ' + JSON.stringify({
+          audioSize: response.audioSize,
+          webcamSize: response.webcamSize
+        }));
+
+        statusDiv.innerHTML += `
+          <h3>Background Storage:</h3>
+          <div class="status ${response.audioSize > 0 ? 'success' : 'warning'}">
+            🎤 Audio: ${response.audioSize} bytes
+          </div>
+          <div class="status ${response.webcamSize > 0 ? 'success' : 'warning'}">
+            📹 Webcam: ${response.webcamSize} bytes
+          </div>
+        `;
+
+      } catch (error) {
+        log('❌ Background DB error: ' + error.message);
+        statusDiv.innerHTML += `<div class="status error">❌ Error: ${error.message}</div>`;
+      }
+    }
+
+    async function testDownload() {
+      const statusDiv = document.getElementById('downloadStatus');
+
+      if (!currentRecordingId) {
+        statusDiv.innerHTML = '<div class="status warning">⚠️ No recording ID. Make a recording first.</div>';
+        return;
+      }
+
+      statusDiv.innerHTML = '<div class="status info">Testing download...</div>';
+
+      try {
+        const response = await chrome.runtime.sendMessage({
+          type: 'DOWNLOAD_FILE',
+          recordingId: currentRecordingId,
+          fileType: 'all'
+        });
+
+        log('Download response: ' + JSON.stringify(response));
+
+        if (response.success) {
+          statusDiv.innerHTML = '<div class="status success">✅ Download successful! Check your downloads folder.</div>';
+        } else {
+          statusDiv.innerHTML = `<div class="status error">❌ Download failed: ${response.error}</div>`;
+        }
+
+      } catch (error) {
+        log('❌ Download error: ' + error.message);
+        statusDiv.innerHTML = `<div class="status error">❌ Download Error: ${error.message}</div>`;
+      }
+    }
+
+    // Helper functions
+    function openDB(name) {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(name);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    function getAllFromStore(db, storeName) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction([storeName], 'readonly');
+        const store = transaction.objectStore(storeName);
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    log('Test suite ready');
+  </script>
+</body>
+</html>

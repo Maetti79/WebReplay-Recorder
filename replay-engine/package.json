@@ -1,0 +1,26 @@
+{
+  "name": "webreplay-engine",
+  "version": "1.0.0",
+  "description": "Replay and render engine for WebReplay storyboards",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "replay": "node src/replay.js",
+    "validate": "node src/index.js validate",
+    "info": "node src/index.js info",
+    "tts:voices": "node src/tts.js voices",
+    "tts:generate": "node src/tts.js generate",
+    "tts:narrate": "node src/tts.js narrate",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["replay", "playwright", "recording", "video"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "playwright": "^1.40.0",
+    "fluent-ffmpeg": "^2.1.2",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {}
+}
