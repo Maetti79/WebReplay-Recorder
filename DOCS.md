@@ -1,6 +1,6 @@
 # WebReplay Recorder - Complete Documentation
 
-**Version:** 1.0.2
+**Version:** 1.0.3
 **Last Updated:** 2026-01-12
 **Status:** Production Ready
 
@@ -65,7 +65,27 @@
 - **Speed control**: 0.25x - 8x playback speed
 - Real-time status indicator
 
-#### 3. ZIP Export (Professional)
+#### 3. Direct Video Export (NEW - Fully Automated!)
+Export video directly in browser - **no screen capture or ffmpeg needed!**:
+
+**Automated Mode** (Recommended):
+- 100% automated canvas-based rendering
+- No screen sharing permissions required
+- Mixes audio tracks automatically (Web Audio API)
+- Burns subtitles directly into video frames
+- Quality presets: 1080p (8Mbps), 720p (5Mbps), 480p (2.5Mbps)
+- Visualizes events with professional UI
+- Progress tracking with live preview
+- Downloads as WebM when complete
+- Works within all browser security restrictions
+
+**Manual Mode**:
+- Uses browser screen capture API
+- Opens preview window for recording
+- You control start/stop
+- Good for custom needs
+
+#### 4. ZIP Export (Professional)
 Package includes:
 - `timeline.json` - Complete storyboard
 - `audio.webm` - Original tab audio
@@ -174,9 +194,34 @@ cd /Users/dennismittmann/Projects/browser-extension
 - ✅ Variable speed playback
 - ✅ Professional visual feedback
 
+#### Direct Video Export (Recommended!)
+1. Click "Export" in editor
+2. Choose "1. Export as Video (MP4)"
+3. Select export method:
+   - **Automated** (recommended): Fully automatic
+   - **Manual**: Control recording yourself
+4. Choose quality preset (1080p/720p/480p)
+5. Wait for export to complete
+6. Video downloads automatically
+
+**Automated Mode**:
+- Opens video renderer window
+- Renders replay automatically
+- Creates video with subtitles
+- No user interaction needed
+
+**Manual Mode**:
+- Opens preview window
+- Prompts for screen sharing permission
+- Select the preview window
+- Start replay manually
+- Recording stops automatically
+
+**No Requirements** - Works in any modern browser!
+
 #### Export to ZIP
 1. Click "Export" in editor
-2. Enter "1" for ZIP export
+2. Choose "2. Export as ZIP"
 3. Download `recording-export.zip`
 4. Extract files
 5. Run render script:
@@ -426,7 +471,18 @@ chrome.storage.local.get(null, console.log);
 
 ## Changelog
 
-### v1.0.2 (Current - 2026-01-12)
+### v1.0.3 (Current - 2026-01-12)
+- 🐛 **Fixed**: Automated video export not working (missing recordingId variable)
+- ✨ **Improved UX**: "Render Video" button now directly exports video
+- ✨ **Improved UX**: "Export ZIP" button simplified (no menu, direct export)
+- 🎨 **Updated**: Button labels and tooltips for better clarity
+
+### v1.0.2 (2026-01-12)
+- ✨ **Direct Video Export**: Export videos without ffmpeg! Automated & manual modes
+  - Automated: Fully automatic rendering and export
+  - Manual: Screen capture with user control
+  - Quality presets: 1080p, 720p, 480p
+  - No external tools required
 - ✨ **Speed Control**: Added 0.25x - 8x replay speed (iframe & tab)
 - ✨ **Tab Replay**: Replay on any website, survives navigation
 - ✨ **Fake Cursor**: Animated cursor shows interaction points

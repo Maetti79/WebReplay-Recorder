@@ -19,7 +19,39 @@ A Chrome extension for recording, editing, and replaying web interactions with A
 
 ### 🎥 Export Options
 
-#### 1. ZIP Package Export
+#### 1. Direct Video Export (NEW!)
+Export video directly from browser - **no ffmpeg or screen capture required!**
+
+**How it works:**
+- Renders video on HTML5 canvas (no screenshots needed)
+- Mixes audio tracks automatically (original + voiceovers)
+- Burns subtitles directly into video frames
+- Exports as WebM using MediaRecorder API
+- **100% automated - just click and wait!**
+
+**Features:**
+- Quality presets: 1080p, 720p, 480p
+- Visualizes events with icons and descriptions
+- Professional gradient backgrounds
+- Progress tracking with live preview
+- Downloads automatically when complete
+- Works within browser security (no special permissions)
+
+**Usage:**
+1. Click "Export" in editor
+2. Select "1. Export as Video (MP4)"
+3. Choose "1. Automated" (recommended)
+4. Select quality preset
+5. Wait for export to complete
+6. Video downloads automatically
+
+**What you'll see:**
+- Elegant export window with progress bars
+- Live canvas preview of video being rendered
+- Real-time stats (events processed, video size, time elapsed)
+- Automatic download when complete
+
+#### 2. ZIP Package Export
 Export a complete package containing:
 - `timeline.json` - Full storyboard data
 - `audio.webm` - Original tab audio
@@ -310,7 +342,15 @@ console.log(JSON.parse(sessionStorage.getItem('webReplayState')));
 
 ## Changelog
 
-### v1.0.2 (Current)
+### v1.0.3 (Current - 2026-01-12)
+- 🐛 **Fixed**: Automated video export not working (missing recordingId variable)
+- ✨ **Improved UX**: "Render Video" button now directly exports video
+- ✨ **Improved UX**: "Export ZIP" button simplified (no menu)
+- 🎨 Updated button labels and tooltips for clarity
+
+### v1.0.2 (2026-01-12)
+- ✨ **Direct Video Export** - Export videos without ffmpeg! (Automated & Manual methods)
+- ✨ **Speed Control** - Replay at 0.25x-8x speed (iframe & tab replay)
 - ✨ Added "Replay in Tab" feature with navigation persistence
 - ✨ Added fake cursor animation for visual feedback
 - ✨ Added custom modal system replacing native alerts

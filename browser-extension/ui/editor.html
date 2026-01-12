@@ -743,14 +743,14 @@
         <button class="btn-primary" id="previewBtn" disabled title="Open preview in new tab">
           🎬 Preview
         </button>
-        <button class="btn-success" id="renderBtn" disabled title="Render video with voiceover">
+        <button class="btn-success" id="renderBtn" disabled title="Export video directly in browser - fully automated!">
           🎥 Render Video
         </button>
         <button class="btn-success" id="saveBtn" disabled>
           💾 Save Changes
         </button>
-        <button class="btn-primary" id="exportBtn" disabled>
-          📦 Export
+        <button class="btn-primary" id="exportBtn" disabled title="Export ZIP package for manual rendering with ffmpeg">
+          📦 Export ZIP
         </button>
       </div>
     </div>
@@ -884,6 +884,7 @@
 
   <input type="file" id="fileInput" accept=".json">
 
+  <script src="../lib/jszip.min.js"></script>
   <script src="modal.js"></script>
   <script src="editor.js"></script>
 </body>

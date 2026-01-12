@@ -830,13 +830,240 @@ let replayTabs = new Set();
 // Listen for replay tab registrations
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'REGISTER_REPLAY_TAB') {
-    console.log('[Background] Registering replay tab:', message.tabId);
+    console.log('[Background] ✅ Registering replay tab:', message.tabId);
     replayTabs.add(message.tabId);
+    console.log('[Background] Currently registered replay tabs:', Array.from(replayTabs));
     sendResponse({ success: true });
   } else if (message.type === 'UNREGISTER_REPLAY_TAB') {
-    console.log('[Background] Unregistering replay tab:', message.tabId);
+    console.log('[Background] ❌ Unregistering replay tab:', message.tabId);
     replayTabs.delete(message.tabId);
+    console.log('[Background] Remaining replay tabs:', Array.from(replayTabs));
     sendResponse({ success: true });
+  } else if (message.type === 'DOWNLOAD_VIDEO') {
+    console.log('[Background] 📥 Downloading video:', message.filename);
+    chrome.downloads.download({
+      url: message.url,
+      filename: message.filename,
+      saveAs: false
+    }, (downloadId) => {
+      if (chrome.runtime.lastError) {
+        console.error('[Background] Download error:', chrome.runtime.lastError);
+        sendResponse({ success: false, error: chrome.runtime.lastError.message });
+      } else {
+        console.log('[Background] ✅ Download started with ID:', downloadId);
+        sendResponse({ success: true, downloadId: downloadId });
+      }
+    });
+    return true; // Keep channel open for async response
+  } else if (message.type === 'START_TAB_RECORDING') {
+    console.log('[Background] 🎥 Starting tab recording');
+    console.log('[Background] Sender tab ID:', sender.tab?.id);
+    console.log('[Background] Recording config:', message.config);
+
+    const tabId = sender.tab?.id;
+    if (!tabId) {
+      console.error('[Background] No tab ID in sender');
+      sendResponse({ success: false, error: 'No tab ID' });
+      return true;
+    }
+
+    // Start tab capture
+    console.log('[Background] Calling chrome.tabCapture.capture()...');
+    chrome.tabCapture.capture({
+      audio: false,
+      video: true,
+      videoConstraints: {
+        mandatory: {
+          minWidth: message.config?.width || 1280,
+          minHeight: message.config?.height || 720,
+          maxWidth: 1920,
+          maxHeight: 1080,
+          maxFrameRate: 30
+        }
+      }
+    }, (stream) => {
+      if (chrome.runtime.lastError) {
+        console.error('[Background] Tab capture error:', chrome.runtime.lastError);
+        sendResponse({ success: false, error: chrome.runtime.lastError.message });
+        return;
+      }
+
+      if (!stream) {
+        console.error('[Background] No stream returned');
+        sendResponse({ success: false, error: 'No stream returned' });
+        return;
+      }
+
+      console.log('[Background] ✅ Tab capture started');
+      console.log('[Background] Stream tracks:', stream.getTracks().map(t => ({ kind: t.kind, label: t.label })));
+
+      // Setup MediaRecorder
+      const options = {
+        mimeType: 'video/webm;codecs=vp9',
+        videoBitsPerSecond: 5000000
+      };
+
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        console.log('[Background] VP9 not supported, using VP8');
+        options.mimeType = 'video/webm;codecs=vp8';
+      }
+
+      const mediaRecorder = new MediaRecorder(stream, options);
+      const videoChunks = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          videoChunks.push(event.data);
+          console.log('[Background] Video chunk received:', event.data.size, 'bytes, total chunks:', videoChunks.length);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        console.log('[Background] MediaRecorder stopped, total chunks:', videoChunks.length);
+        const totalSize = videoChunks.reduce((sum, chunk) => sum + chunk.size, 0);
+        console.log('[Background] Total size:', totalSize, 'bytes');
+
+        // Stop stream
+        stream.getTracks().forEach(track => track.stop());
+
+        // Create blob and download
+        if (videoChunks.length > 0) {
+          const blob = new Blob(videoChunks, { type: 'video/webm' });
+          const url = URL.createObjectURL(blob);
+
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0] + '_' +
+                            new Date().toTimeString().split(' ')[0].replace(/:/g, '-');
+          const filename = `replay_${message.recordingId || 'video'}_${timestamp}.webm`;
+
+          console.log('[Background] Downloading video:', filename);
+          chrome.downloads.download({
+            url: url,
+            filename: filename,
+            saveAs: false
+          }, (downloadId) => {
+            if (chrome.runtime.lastError) {
+              console.error('[Background] Download error:', chrome.runtime.lastError);
+            } else {
+              console.log('[Background] ✅ Download started:', downloadId);
+            }
+            URL.revokeObjectURL(url);
+
+            // Notify content script
+            chrome.tabs.sendMessage(tabId, {
+              type: 'RECORDING_COMPLETE',
+              success: true,
+              filename: filename
+            });
+          });
+        }
+
+        activeRecordings.delete(tabId);
+      };
+
+      mediaRecorder.onerror = (error) => {
+        console.error('[Background] MediaRecorder error:', error);
+        stream.getTracks().forEach(track => track.stop());
+        activeRecordings.delete(tabId);
+      };
+
+      // Start recording
+      mediaRecorder.start(1000);
+      console.log('[Background] MediaRecorder started');
+
+      // Store recording state
+      activeRecordings.set(tabId, {
+        recorder: mediaRecorder,
+        stream: stream,
+        chunks: videoChunks,
+        config: message.config,
+        recordingId: message.recordingId
+      });
+
+      sendResponse({ success: true });
+    });
+
+    return true; // Keep channel open for async response
+
+  } else if (message.type === 'STOP_TAB_RECORDING') {
+    console.log('[Background] Stopping tab recording for tab:', sender.tab?.id);
+
+    const tabId = sender.tab?.id;
+    if (!tabId) {
+      sendResponse({ success: false, error: 'No tab ID' });
+      return true;
+    }
+
+    const recording = activeRecordings.get(tabId);
+    if (!recording) {
+      console.warn('[Background] No active recording for tab:', tabId);
+      sendResponse({ success: false, error: 'No active recording' });
+      return true;
+    }
+
+    // Request final data and stop
+    if (recording.recorder && recording.recorder.state !== 'inactive') {
+      recording.recorder.requestData();
+      setTimeout(() => {
+        if (recording.recorder && recording.recorder.state !== 'inactive') {
+          recording.recorder.stop();
+        }
+      }, 500);
+    }
+
+    sendResponse({ success: true });
+    return true;
+
+  } else if (message.type === 'REPLAY_COMPLETE') {
+    console.log('[Background] Replay completed in tab:', sender.tab?.id);
+    console.log('[Background] Broadcasting REPLAY_COMPLETE to all tabs...');
+
+    // Forward to all tabs (especially the recording control tab)
+    chrome.tabs.query({}, (tabs) => {
+      console.log('[Background] Found', tabs.length, 'tabs to notify');
+      tabs.forEach(tab => {
+        // Don't send back to the sender tab
+        if (tab.id !== sender.tab?.id) {
+          chrome.tabs.sendMessage(tab.id, {
+            type: 'REPLAY_COMPLETE',
+            replayTabId: sender.tab?.id
+          }, (response) => {
+            if (chrome.runtime.lastError) {
+              // Silent fail - not all tabs have listeners
+            } else {
+              console.log('[Background] REPLAY_COMPLETE delivered to tab:', tab.id);
+            }
+          });
+        }
+      });
+    });
+
+    sendResponse({ success: true });
+    return true;
+
+  } else if (message.type === 'DOWNLOAD_VIDEO_BLOB') {
+    console.log('[Background] 📥 Downloading video blob:', message.filename);
+    console.log('[Background] Data URL size:', message.dataUrl?.length || 0, 'characters');
+
+    chrome.downloads.download({
+      url: message.dataUrl,
+      filename: message.filename,
+      saveAs: false
+    }, (downloadId) => {
+      if (chrome.runtime.lastError) {
+        console.error('[Background] Download error:', chrome.runtime.lastError);
+        sendResponse({ success: false, error: chrome.runtime.lastError.message });
+      } else {
+        console.log('[Background] ✅ Download started with ID:', downloadId);
+        sendResponse({ success: true, downloadId: downloadId });
+      }
+    });
+    return true; // Keep channel open for async response
+
+  } else if (message.type === 'START_RECORDING_WITH_STREAM') {
+    console.log('[Background] Recording setup request');
+    // Content script is handling the recording, just acknowledge
+    sendResponse({ success: true });
+    return true;
   }
   return true;
 });
@@ -845,32 +1072,42 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 chrome.webNavigation.onCommitted.addListener(async (details) => {
   // Only handle replay tabs
   if (!replayTabs.has(details.tabId)) {
+    // Don't log for every tab, too noisy
     return;
   }
 
   // Skip iframe navigations
   if (details.frameId !== 0) {
+    console.log('[Background] Skipping iframe navigation in replay tab:', details.tabId);
     return;
   }
 
-  console.log('[Background] Replay tab navigated:', details.tabId, details.url);
+  console.log('[Background] 🔄 Replay tab navigated!');
+  console.log('[Background] Tab ID:', details.tabId);
+  console.log('[Background] New URL:', details.url);
+  console.log('[Background] Transition type:', details.transitionType);
 
   try {
     // Wait for page to be ready
+    console.log('[Background] Waiting 800ms for page to be ready...');
     await new Promise(resolve => setTimeout(resolve, 800));
 
     // Re-inject replay script
+    console.log('[Background] Re-injecting replay.js...');
     await chrome.scripting.executeScript({
       target: { tabId: details.tabId },
       files: ['scripts/replay.js']
     });
 
-    console.log('[Background] ✅ Replay script re-injected after navigation');
+    console.log('[Background] ✅ Replay script re-injected successfully!');
+    console.log('[Background] Script should auto-resume replay from sessionStorage');
 
   } catch (error) {
-    console.error('[Background] Error re-injecting replay script:', error);
+    console.error('[Background] ❌ Error re-injecting replay script:', error);
+    console.error('[Background] Error details:', error.message);
     // If injection fails, unregister the tab
     replayTabs.delete(details.tabId);
+    console.log('[Background] Tab unregistered due to injection failure');
   }
 });
 

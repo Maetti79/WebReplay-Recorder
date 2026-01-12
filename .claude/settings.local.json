@@ -17,7 +17,9 @@
       "Bash(for file in /Users/dennismittmann/Projects/browser-extension/*.md)",
       "Bash(done)",
       "Bash(ls:*)",
-      "Bash(for file in /Users/dennismittmann/Projects/*.md)"
+      "Bash(for file in /Users/dennismittmann/Projects/*.md)",
+      "Bash(curl:*)",
+      "Bash(open:*)"
     ]
   }
 }

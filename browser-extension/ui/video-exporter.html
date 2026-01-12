@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Video Exporter</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: 'Space Grotesk', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      max-width: 800px;
+      width: 100%;
+    }
+
+    h1 {
+      margin: 0 0 10px 0;
+      font-size: 28px;
+      color: #1f2937;
+    }
+
+    .subtitle {
+      color: #6b7280;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .progress-section {
+      margin-bottom: 30px;
+    }
+
+    .progress-bar {
+      background: #f3f4f6;
+      border-radius: 8px;
+      height: 30px;
+      overflow: hidden;
+      margin-bottom: 15px;
+    }
+
+    .progress-fill {
+      background: linear-gradient(90deg, #2563eb, #1d4ed8);
+      height: 100%;
+      width: 0%;
+      transition: width 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .status {
+      color: #374151;
+      font-size: 14px;
+      margin-bottom: 5px;
+    }
+
+    .status strong {
+      color: #1f2937;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .stat {
+      background: #f9fafb;
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 5px;
+    }
+
+    .stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1f2937;
+    }
+
+    #renderCanvas {
+      width: 100%;
+      border-radius: 8px;
+      margin-top: 20px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      display: none;
+    }
+
+    .log {
+      background: #1f2937;
+      color: #10b981;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+      margin-top: 20px;
+      display: block;
+    }
+
+    .log-line {
+      margin-bottom: 5px;
+    }
+
+    .complete-message {
+      background: #d1fae5;
+      border: 2px solid #10b981;
+      color: #065f46;
+      padding: 20px;
+      border-radius: 12px;
+      margin-top: 20px;
+      display: none;
+      text-align: center;
+    }
+
+    .complete-message h2 {
+      margin: 0 0 10px 0;
+      color: #065f46;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎬 Exporting Video</h1>
+    <p class="subtitle">Automated video export - no screen sharing required!</p>
+
+    <div class="progress-section">
+      <div class="status"><strong>Status:</strong> <span id="statusText">Initializing...</span></div>
+      <div class="progress-bar">
+        <div id="progressBar" class="progress-fill">0%</div>
+      </div>
+      <div class="status"><strong>Time Elapsed:</strong> <span id="timeElapsed">0s</span></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Total Events</div>
+        <div class="stat-value" id="totalEvents">-</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Processed</div>
+        <div class="stat-value" id="processedEvents">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Video Size</div>
+        <div class="stat-value" id="videoSize">0 MB</div>
+      </div>
+    </div>
+
+    <canvas id="renderCanvas"></canvas>
+
+    <div id="log" class="log"></div>
+
+    <div id="completeMessage" class="complete-message">
+      <h2>✅ Export Complete!</h2>
+      <p>Your video has been downloaded to your Downloads folder.</p>
+      <p style="font-size: 12px; color: #6b7280; margin-top: 10px;">You can close this window now.</p>
+    </div>
+  </div>
+
+  <script src="video-exporter.js"></script>
+</body>
+</html>

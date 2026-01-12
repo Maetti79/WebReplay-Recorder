@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Video Renderer</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #000000;
+      overflow: hidden;
+    }
+
+    #renderCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: #ffffff;
+    }
+
+    #status {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 10px 15px;
+      border-radius: 6px;
+      font-size: 14px;
+      z-index: 10000;
+    }
+
+    .subtitle-overlay {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 60px;
+      text-align: center;
+      padding: 20px 40px;
+      color: white;
+      font-size: 32px;
+      font-weight: 700;
+      text-shadow:
+        2px 2px 8px rgba(0, 0, 0, 0.95),
+        -1px -1px 4px rgba(0, 0, 0, 0.8),
+        0 0 16px rgba(0, 0, 0, 0.9);
+      z-index: 9999;
+      display: none;
+    }
+
+    .fake-cursor {
+      position: fixed;
+      width: 24px;
+      height: 24px;
+      pointer-events: none;
+      z-index: 9998;
+      transition: all 0.3s ease;
+      display: none;
+    }
+
+    .click-marker {
+      position: fixed;
+      width: 30px;
+      height: 30px;
+      border: 4px solid #ef4444;
+      border-radius: 50%;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      z-index: 10001;
+      display: none;
+    }
+
+    @keyframes clickPulse {
+      0% {
+        transform: translate(-50%, -50%) scale(0.5);
+        opacity: 1;
+      }
+      100% {
+        transform: translate(-50%, -50%) scale(2);
+        opacity: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="renderCanvas"></canvas>
+  <div id="status">Initializing...</div>
+  <div id="subtitle" class="subtitle-overlay"></div>
+  <div id="cursor" class="fake-cursor">
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: 100%; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));">
+      <path d="M5.5 3.21V20.8l5.2-4.57 3.06 6.47 3.81-1.94-3.06-6.47 7.66-.43L5.5 3.21z" fill="#ffffff" stroke="#000000" stroke-width="1.5"/>
+    </svg>
+  </div>
+  <div id="clickMarker" class="click-marker"></div>
+
+  <script src="video-renderer.js"></script>
+</body>
+</html>

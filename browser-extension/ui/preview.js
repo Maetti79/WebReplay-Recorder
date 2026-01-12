@@ -214,6 +214,11 @@ function startReplay() {
 
   if (isReplaying) return;
 
+  console.log('%c[Preview] ▶️ Starting Replay', 'color: #1976d2; font-weight: bold; font-size: 14px');
+  console.log('Total events:', storyboard.timeline.length);
+  console.log('Replay speed:', replaySpeed + 'x');
+  console.log('Subtitles:', storyboard.subtitles ? storyboard.subtitles.length : 0);
+
   isReplaying = true;
   currentEventIndex = 0;
   eventLog.innerHTML = '<div style="color: #1976d2; font-weight: bold;">▶️ Replay Started</div>';
@@ -431,6 +436,10 @@ function executeNextEvent() {
     clickMarker.style.display = 'none';
     fakeCursor.style.display = 'none';
     eventLog.innerHTML += '<div style="color: #2e7d32; font-weight: bold; margin-top: 8px;">✅ Replay Completed</div>';
+
+    console.log('%c[Preview] ✅ Replay Completed Successfully!', 'color: #2e7d32; font-weight: bold; font-size: 14px');
+    console.log(`Total events executed: ${currentEventIndex}/${storyboard.timeline.length}`);
+
     return;
   }
 
@@ -466,6 +475,15 @@ function executeNextEvent() {
 }
 
 function executeEvent(event) {
+  // Log event execution with details
+  console.group(`%c[Preview] Executing Event: ${event.type}`, 'color: #2563eb; font-weight: bold');
+  console.log('Event Data:', event);
+  console.log('Timestamp:', event.t + 'ms');
+  if (event.target) console.log('Target:', event.target);
+  if (event.position) console.log('Position:', event.position);
+  if (event.text) console.log('Text:', event.text);
+  console.groupEnd();
+
   // Handle navigation
   if (event.type === 'navigate' && event.url) {
     currentUrl = event.url;
@@ -1182,10 +1200,33 @@ async function playVoiceover(voiceover) {
       currentAudio = null;
     }
 
-    let audioBlob = voiceover.audioBlob;
+    let audioBlob = null;
 
-    // If audioBlob is not directly available, try to fetch from IndexedDB
-    if (!audioBlob && voiceover.blobId) {
+    // Check if we have base64 audio (passed via message)
+    if (voiceover.audioBase64) {
+      console.log('[Preview] Converting base64 to Blob...');
+      try {
+        // Decode base64 to binary string
+        const binaryString = atob(voiceover.audioBase64);
+        // Convert binary string to Uint8Array
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        // Create Blob from Uint8Array
+        audioBlob = new Blob([bytes], { type: voiceover.audioType || 'audio/mpeg' });
+        console.log('[Preview] ✅ Converted base64 to Blob:', audioBlob.size, 'bytes, type:', audioBlob.type);
+      } catch (conversionError) {
+        console.error('[Preview] Failed to convert base64 to Blob:', conversionError);
+      }
+    }
+    // Check if audioBlob is directly available
+    else if (voiceover.audioBlob) {
+      audioBlob = voiceover.audioBlob;
+      console.log('[Preview] Using audioBlob from memory');
+    }
+    // If audioBlob is not available, try to fetch from IndexedDB
+    else if (voiceover.blobId) {
       console.log('[Preview] Loading voiceover from IndexedDB:', voiceover.blobId);
       try {
         audioBlob = await getVoiceoverBlob(voiceover.blobId);
@@ -1197,7 +1238,7 @@ async function playVoiceover(voiceover) {
     }
 
     if (!audioBlob) {
-      console.warn('[Preview] Voiceover audio blob not found (no audioBlob or blobId)');
+      console.warn('[Preview] Voiceover audio blob not found (no audioBlob, audioBase64, or blobId)');
       return;
     }
 

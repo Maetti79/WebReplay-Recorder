@@ -1,6 +1,7 @@
 // Timeline Editor - Main controller
 
 let storyboard = null;
+let recordingId = null; // Current recording ID for media/export
 let selectedEvent = null;
 let zoom = 1;
 let isDragging = false;
@@ -49,7 +50,7 @@ fileInput.addEventListener('change', (e) => {
       exportBtn.disabled = false;
 
       // Try to load audio/video if recordingId is available
-      const recordingId = storyboard?.meta?.recordingId;
+      recordingId = storyboard?.meta?.recordingId; // Set global recordingId
       if (recordingId) {
         console.log('[Timeline Editor] Found recordingId, loading media:', recordingId);
 
@@ -315,19 +316,25 @@ function loadStoryboard() {
 
 // Update render button state based on available audio/voiceovers
 function updateRenderButtonState() {
-  const hasVoiceovers = subtitles.some(sub => sub.voiceover && sub.voiceover.audioBlob);
-  const hasAudio = audioBlob !== null;
-
-  if (storyboard && (hasVoiceovers || hasAudio)) {
+  // Enable render button as long as we have a storyboard
+  // Audio/voiceovers are optional for video export
+  if (storyboard) {
     renderBtn.disabled = false;
-    renderBtn.title = 'Render video with audio/voiceovers';
+
+    const hasVoiceovers = subtitles.some(sub => sub.voiceover && sub.voiceover.audioBlob);
+    const hasAudio = audioBlob !== null;
+
+    if (hasVoiceovers || hasAudio) {
+      renderBtn.title = 'Export video directly in browser - fully automated!';
+    } else {
+      renderBtn.title = 'Export video directly in browser (silent - no audio recorded)';
+    }
+
+    console.log('[Editor] Render button enabled (hasAudio:', hasAudio, ', hasVoiceovers:', hasVoiceovers, ')');
   } else {
     renderBtn.disabled = true;
-    if (!storyboard) {
-      renderBtn.title = 'Load a storyboard first';
-    } else {
-      renderBtn.title = 'Record with audio or generate voiceovers first';
-    }
+    renderBtn.title = 'Load a storyboard first';
+    console.log('[Editor] Render button disabled (no storyboard)');
   }
 }
 
@@ -2126,8 +2133,7 @@ saveBtn.addEventListener('click', async () => {
     storyboard.originalAudioOffset = originalAudioOffset;
     storyboard.webcamOffset = webcamOffset;
 
-    // Save to chrome.storage if we have a recordingId
-    const recordingId = storyboard?.meta?.recordingId;
+    // Save to chrome.storage if we have a recordingId (use global)
     if (recordingId) {
       await chrome.storage.local.set({
         [`storyboard_${recordingId}`]: JSON.stringify(storyboard)
@@ -2159,24 +2165,18 @@ saveBtn.addEventListener('click', async () => {
 });
 
 // Export
+// Export as ZIP - Package for manual rendering with ffmpeg
 exportBtn.addEventListener('click', async () => {
-  if (!storyboard) return;
-
-  const options = [
-    '1. Export as ZIP (video, audio, subtitles, voiceovers, JSON)',
-    '2. Export JSON only'
-  ];
-
-  const choice = await showPrompt(`Export options:\n\n${options.join('\n')}\n\nEnter 1 or 2:`, '1', {
-    title: 'Export Options',
-    icon: '📦'
-  });
-
-  if (choice === '1') {
-    await exportAsZip();
-  } else if (choice === '2') {
-    saveBtn.click();
+  if (!storyboard) {
+    await showModal('❌ No storyboard loaded.\n\nPlease load a recording first.', {
+      title: 'No Recording',
+      icon: '⚠️'
+    });
+    return;
   }
+
+  // Directly export as ZIP
+  await exportAsZip();
 });
 
 // Export everything as ZIP for manual rendering
@@ -2185,18 +2185,13 @@ async function exportAsZip() {
     // Show loading message
     showModal('📦 Preparing export package...\n\nThis may take a moment depending on file sizes.');
 
-    // Load JSZip dynamically
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
-    document.head.appendChild(script);
-
-    await new Promise((resolve, reject) => {
-      script.onload = resolve;
-      script.onerror = () => reject(new Error('Failed to load JSZip library'));
-    });
+    // Check if JSZip is available
+    if (typeof JSZip === 'undefined') {
+      throw new Error('JSZip library not loaded');
+    }
 
     const zip = new JSZip();
-    const recordingId = storyboard?.meta?.recordingId;
+    // Use global recordingId
     const projectName = storyboard?.meta?.title || 'recording';
 
     // 1. Add timeline JSON
@@ -2312,6 +2307,586 @@ async function exportAsZip() {
   } catch (error) {
     console.error('[Export] Error:', error);
     showModal('❌ Export failed: ' + error.message);
+  }
+}
+
+// Export as video directly (no ffmpeg needed!)
+async function exportAsVideo() {
+  console.log('[Export] exportAsVideo() called');
+  try {
+    // Check browser support
+    if (!('MediaRecorder' in window)) {
+      console.error('[Export] MediaRecorder not supported');
+      await showModal('❌ Video export not supported in this browser.\n\nPlease use Chrome 49+ or Edge 79+.', {
+        title: 'Not Supported',
+        icon: '❌'
+      });
+      return;
+    }
+
+    console.log('[Export] MediaRecorder supported');
+
+    // Ask which type of video
+    const videoTypeOptions = [
+      '1. Actual Website Replay - Records the real website (Recommended)',
+      '2. Storyboard Visualization - Canvas animation with event details'
+    ];
+
+    const videoTypeChoice = await showPrompt(
+      `What type of video do you want to create?\n\n${videoTypeOptions.join('\n')}\n\nEnter 1 or 2:`,
+      '1',
+      { title: 'Video Type', icon: '🎬' }
+    );
+
+    console.log('[Export] Video type choice:', videoTypeChoice);
+
+    if (videoTypeChoice === '1') {
+      console.log('[Export] Starting actual website replay capture...');
+      await exportVideoActualReplay();
+    } else if (videoTypeChoice === '2') {
+      console.log('[Export] Starting storyboard visualization...');
+      await exportVideoAutomated();
+    } else {
+      console.log('[Export] No valid video type selected');
+    }
+
+  } catch (error) {
+    console.error('[Export] Video export error:', error);
+    console.error('[Export] Error stack:', error.stack);
+    await showModal('❌ Video export failed:\n\n' + error.message, {
+      title: 'Export Failed',
+      icon: '❌'
+    });
+  } finally {
+    console.log('[Export] exportAsVideo() finished');
+  }
+}
+
+// Actual website replay video export
+async function exportVideoActualReplay() {
+  console.log('[Export] exportVideoActualReplay() called - Two-tab approach');
+  console.log('[Export] Storyboard metadata:', storyboard.meta);
+  console.log('[Export] Timeline events:', storyboard.timeline.length);
+
+  try {
+    // Find the starting URL from timeline events or metadata
+    let startUrl = null;
+
+    // Check metadata first
+    if (storyboard.meta?.url) {
+      startUrl = storyboard.meta.url;
+      console.log('[Export] Found URL in metadata:', startUrl);
+    }
+    // Look for first navigate event
+    else {
+      const firstNavigate = storyboard.timeline.find(event => event.type === 'navigate' && event.url);
+      if (firstNavigate) {
+        startUrl = firstNavigate.url;
+        console.log('[Export] Found URL in first navigate event:', startUrl);
+      }
+    }
+
+    // Fallback: check any event with a url property
+    if (!startUrl) {
+      const eventWithUrl = storyboard.timeline.find(event => event.url);
+      if (eventWithUrl) {
+        startUrl = eventWithUrl.url;
+        console.log('[Export] Found URL in event:', startUrl);
+      }
+    }
+
+    if (!startUrl) {
+      console.error('[Export] Storyboard:', storyboard);
+      throw new Error('No starting URL found in recording. Cannot replay actual website.\n\nPlease ensure your recording captured the page URL.');
+    }
+
+    console.log('[Export] Starting URL:', startUrl);
+
+    // Video quality preset (720p default)
+    const qualityPresets = {
+      '1': { width: 1920, height: 1080, videoBitsPerSecond: 8000000, label: '1080p' },
+      '2': { width: 1280, height: 720, videoBitsPerSecond: 5000000, label: '720p' },
+      '3': { width: 854, height: 480, videoBitsPerSecond: 2500000, label: '480p' }
+    };
+
+    const preset = qualityPresets['2']; // Default to 720p
+    console.log('[Export] Using preset:', preset);
+
+    // Filter out the first navigate event if it matches the starting URL
+    let filteredTimeline = [...storyboard.timeline];
+    if (filteredTimeline.length > 0 && filteredTimeline[0].type === 'navigate' && filteredTimeline[0].url === startUrl) {
+      console.log('[Export] Removing duplicate first navigate event');
+      filteredTimeline = filteredTimeline.slice(1);
+    }
+
+    // Prepare storyboard with voiceover audioBlobs converted to base64 for message passing
+    const subtitlesWithAudio = storyboard.subtitles ? await Promise.all(storyboard.subtitles.map(async sub => {
+      const subtitleCopy = { ...sub };
+      // If this subtitle has a voiceover in the editor's memory, convert to base64
+      const editorSubtitle = subtitles.find(s => s.id === sub.id);
+      if (editorSubtitle && editorSubtitle.voiceover && editorSubtitle.voiceover.audioBlob) {
+        console.log('[Export] Converting audioBlob to base64 for subtitle:', sub.id);
+        const audioBlob = editorSubtitle.voiceover.audioBlob;
+
+        // Convert Blob to base64
+        const arrayBuffer = await audioBlob.arrayBuffer();
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+
+        subtitleCopy.voiceover = {
+          ...editorSubtitle.voiceover,
+          audioBase64: base64, // Pass as base64
+          audioType: audioBlob.type // Pass the MIME type
+        };
+
+        console.log('[Export] Converted audioBlob:', audioBlob.size, 'bytes ->', base64.length, 'chars');
+      }
+      return subtitleCopy;
+    })) : [];
+
+    const modifiedStoryboard = {
+      ...storyboard,
+      timeline: filteredTimeline,
+      subtitles: subtitlesWithAudio // Use subtitles with base64 audio
+    };
+
+    console.log('[Export] Subtitles with voiceover audio (base64):',
+      subtitlesWithAudio.filter(s => s.voiceover?.audioBase64).length);
+
+    // Save modified storyboard to storage (for replay tab persistence across navigation)
+    const storyboardForStorage = {
+      ...modifiedStoryboard,
+      subtitles: subtitlesWithAudio.map(sub => {
+        // Remove audioBase64 for storage (too large, keep only blobId)
+        if (sub.voiceover && sub.voiceover.audioBase64) {
+          const { audioBase64, audioType, ...voiceoverWithoutAudio } = sub.voiceover;
+          return { ...sub, voiceover: voiceoverWithoutAudio };
+        }
+        return sub;
+      })
+    };
+
+    await chrome.storage.local.set({
+      [`storyboard_${recordingId}`]: JSON.stringify(storyboardForStorage)
+    });
+
+    console.log('[Export] Saved storyboard to storage (without base64 audio)');
+
+    console.log('[Export] ========================================');
+    console.log('[Export] STEP 1: Opening replay tab...');
+    console.log('[Export] ========================================');
+
+    // STEP 1: Open replay tab with the actual website
+    const replayTab = await chrome.tabs.create({
+      url: startUrl,
+      active: false // Don't focus yet
+    });
+
+    console.log('[Export] Replay tab created:', replayTab.id);
+
+    // Wait for replay tab to load
+    await new Promise((resolve) => {
+      const listener = (tabId, changeInfo) => {
+        if (tabId === replayTab.id && changeInfo.status === 'complete') {
+          chrome.tabs.onUpdated.removeListener(listener);
+          resolve();
+        }
+      };
+      chrome.tabs.onUpdated.addListener(listener);
+    });
+
+    console.log('[Export] Replay tab loaded');
+
+    // Register replay tab with background for navigation handling
+    await chrome.runtime.sendMessage({
+      type: 'REGISTER_REPLAY_TAB',
+      tabId: replayTab.id
+    });
+
+    // Inject replay script
+    await chrome.scripting.executeScript({
+      target: { tabId: replayTab.id },
+      files: ['scripts/replay.js']
+    });
+
+    console.log('[Export] Replay script injected');
+
+    console.log('[Export] ========================================');
+    console.log('[Export] STEP 2: Opening recording control tab...');
+    console.log('[Export] ========================================');
+
+    // STEP 2: Open recording control tab
+    const controlUrl = chrome.runtime.getURL('ui/recording-control.html') +
+      `?replayTabId=${replayTab.id}&recordingId=${recordingId}`;
+
+    const controlTab = await chrome.tabs.create({
+      url: controlUrl,
+      active: true // Focus this one
+    });
+
+    console.log('[Export] Recording control tab created:', controlTab.id);
+
+    // Wait for control tab to load
+    await new Promise((resolve) => {
+      const listener = (tabId, changeInfo) => {
+        if (tabId === controlTab.id && changeInfo.status === 'complete') {
+          chrome.tabs.onUpdated.removeListener(listener);
+          resolve();
+        }
+      };
+      chrome.tabs.onUpdated.addListener(listener);
+    });
+
+    console.log('[Export] Recording control tab loaded');
+
+    console.log('[Export] ========================================');
+    console.log('[Export] STEP 3: Sending configuration...');
+    console.log('[Export] ========================================');
+
+    // STEP 3: Send storyboard and config to recording control tab
+    console.log('[Export] Sending storyboard with', modifiedStoryboard.subtitles?.length || 0, 'subtitles');
+    const voiceoverCount = modifiedStoryboard.subtitles?.filter(s => s.voiceover?.audioBase64).length || 0;
+    console.log('[Export] Subtitles with voiceover audio (base64):', voiceoverCount);
+
+    await chrome.tabs.sendMessage(controlTab.id, {
+      type: 'INIT_RECORDING_CONTROL',
+      storyboard: modifiedStoryboard, // Includes audioBlobs in memory
+      videoConfig: preset,
+      replayTabId: replayTab.id,
+      recordingId: recordingId
+    });
+
+    console.log('[Export] Configuration sent to recording control tab');
+
+    console.log('[Export] ========================================');
+    console.log('[Export] ✅ Setup complete!');
+    console.log('[Export] ========================================');
+    console.log('[Export] Replay tab ID:', replayTab.id);
+    console.log('[Export] Control tab ID:', controlTab.id);
+    console.log('[Export] Timeline events:', modifiedStoryboard.timeline.length);
+    console.log('[Export] User should now click "Start Recording" in control tab');
+
+  } catch (error) {
+    console.error('[Export] Export error:', error);
+    console.error('[Export] Error stack:', error.stack);
+    alert('❌ Export failed:\n\n' + error.message);
+  }
+}
+
+// Automated video export using canvas renderer
+async function exportVideoAutomated() {
+  console.log('[Export] exportVideoAutomated() called');
+  try {
+    // Ask for quality preset
+    console.log('[Export] Showing quality selection...');
+    const qualityOptions = [
+      '1. 1080p (1920x1080) - High quality',
+      '2. 720p (1280x720) - Good quality (Recommended)',
+      '3. 480p (854x480) - Fast export'
+    ];
+
+    const qualityChoice = await showPrompt(
+      `Select video quality:\n\n${qualityOptions.join('\n')}\n\nEnter 1, 2, or 3:`,
+      '2',
+      { title: 'Video Quality', icon: '🎥' }
+    );
+
+    console.log('[Export] Quality choice:', qualityChoice);
+
+    const qualityPresets = {
+      '1': { width: 1920, height: 1080, videoBitsPerSecond: 8000000, label: '1080p' },
+      '2': { width: 1280, height: 720, videoBitsPerSecond: 5000000, label: '720p' },
+      '3': { width: 854, height: 480, videoBitsPerSecond: 2500000, label: '480p' }
+    };
+
+    const preset = qualityPresets[qualityChoice] || qualityPresets['2'];
+    console.log('[Export] Using automated export with preset:', preset);
+
+    // Validate recordingId
+    if (!recordingId) {
+      throw new Error('No recording ID available. Please ensure the recording was loaded correctly.');
+    }
+
+    console.log('[Export] Recording ID:', recordingId);
+
+    // Open video exporter window
+    const exporterUrl = chrome.runtime.getURL('ui/video-exporter.html') +
+      `?id=${recordingId}&width=${preset.width}&height=${preset.height}&bitrate=${preset.videoBitsPerSecond}`;
+
+    console.log('[Export] Opening automated exporter:', exporterUrl);
+
+    console.log('[Export] Opening window with URL:', exporterUrl);
+
+    const exporterWindow = window.open(
+      exporterUrl,
+      'videoExporter',
+      `width=900,height=700`
+    );
+
+    console.log('[Export] Window opened:', exporterWindow ? 'success' : 'BLOCKED');
+
+    if (!exporterWindow) {
+      console.error('[Export] Window blocked by popup blocker');
+      await showModal(
+        '❌ Failed to open exporter window.\n\nPlease allow popups for this extension.',
+        { title: 'Export Failed', icon: '❌' }
+      );
+      return;
+    }
+
+    console.log('[Export] Showing success modal...');
+    await showModal(
+      `✅ Video export started!\n\n` +
+      `Quality: ${preset.label} (${preset.width}x${preset.height})\n\n` +
+      `The export window will guide you through the process.\n` +
+      `Your video will download automatically when complete.\n\n` +
+      `No screen capture needed - fully automated!`,
+      { title: 'Export Started', icon: '🎬' }
+    );
+
+    console.log('[Export] Success modal shown');
+
+  } catch (error) {
+    console.error('[Export] Automated export error:', error);
+    await showModal('❌ Automated export failed: ' + error.message, {
+      title: 'Export Failed',
+      icon: '❌'
+    });
+  }
+}
+
+// Manual video export using screen capture
+async function exportVideoManual() {
+  try {
+    // Ask for quality preset
+    const qualityOptions = [
+      '1. 1080p (1920x1080) - High quality',
+      '2. 720p (1280x720) - Good quality (Recommended)',
+      '3. 480p (854x480) - Fast export'
+    ];
+
+    const qualityChoice = await showPrompt(
+      `Select video quality:\n\n${qualityOptions.join('\n')}\n\nEnter 1, 2, or 3:`,
+      '2',
+      { title: 'Video Quality', icon: '🎥' }
+    );
+
+    const qualityPresets = {
+      '1': { width: 1920, height: 1080, videoBitsPerSecond: 8000000, label: '1080p' },
+      '2': { width: 1280, height: 720, videoBitsPerSecond: 5000000, label: '720p' },
+      '3': { width: 854, height: 480, videoBitsPerSecond: 2500000, label: '480p' }
+    };
+
+    const preset = qualityPresets[qualityChoice] || qualityPresets['2'];
+    console.log('[Export] Using manual export with preset:', preset);
+
+    // Show progress modal
+    const progressModal = document.createElement('div');
+    progressModal.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      z-index: 100000;
+      min-width: 400px;
+      font-family: 'Space Grotesk', sans-serif;
+    `;
+    progressModal.innerHTML = `
+      <h3 style="margin: 0 0 20px 0; font-size: 20px;">🎥 Exporting Video</h3>
+      <div style="margin-bottom: 10px;">
+        <strong>Quality:</strong> ${preset.label} (${preset.width}x${preset.height})
+      </div>
+      <div style="margin-bottom: 20px;">
+        <strong>Status:</strong> <span id="exportStatus">Preparing...</span>
+      </div>
+      <div style="background: #f3f4f6; border-radius: 8px; height: 20px; overflow: hidden;">
+        <div id="exportProgress" style="background: linear-gradient(90deg, #2563eb, #1d4ed8); height: 100%; width: 0%; transition: width 0.3s;"></div>
+      </div>
+      <div style="margin-top: 10px; font-size: 14px; color: #6b7280;">
+        <span id="exportPercentage">0%</span> - <span id="exportTime">Estimating...</span>
+      </div>
+    `;
+    document.body.appendChild(progressModal);
+
+    const updateProgress = (percent, status, timeLeft) => {
+      const progressBar = document.getElementById('exportProgress');
+      const progressText = document.getElementById('exportPercentage');
+      const statusText = document.getElementById('exportStatus');
+      const timeText = document.getElementById('exportTime');
+
+      if (progressBar) progressBar.style.width = percent + '%';
+      if (progressText) progressText.textContent = Math.round(percent) + '%';
+      if (statusText) statusText.textContent = status;
+      if (timeText && timeLeft) timeText.textContent = timeLeft;
+    };
+
+    // Open preview window for rendering
+    updateProgress(5, 'Opening preview window...', null);
+
+    const previewUrl = chrome.runtime.getURL('ui/preview.html') + '?id=' + recordingId;
+    const previewWindow = window.open(previewUrl, 'videoExport', `width=${preset.width},height=${preset.height}`);
+
+    if (!previewWindow) {
+      document.body.removeChild(progressModal);
+      await showModal('❌ Failed to open preview window.\n\nPlease allow popups for this extension.', {
+        title: 'Export Failed',
+        icon: '❌'
+      });
+      return;
+    }
+
+    // Wait for preview to load
+    updateProgress(10, 'Loading preview...', null);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Send storyboard with base64 audio via postMessage
+    console.log('[Export] Sending storyboard with base64 audio to preview window...');
+    try {
+      // Prepare subtitles with base64 audio
+      const subtitlesWithBase64 = await Promise.all(subtitles.map(async sub => {
+        const subtitleCopy = { ...sub };
+        if (sub.voiceover && sub.voiceover.audioBlob) {
+          const arrayBuffer = await sub.voiceover.audioBlob.arrayBuffer();
+          const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+          subtitleCopy.voiceover = {
+            ...sub.voiceover,
+            audioBase64: base64,
+            audioType: sub.voiceover.audioBlob.type
+          };
+        }
+        return subtitleCopy;
+      }));
+
+      const storyboardWithAudio = {
+        ...storyboard,
+        subtitles: subtitlesWithBase64
+      };
+
+      previewWindow.postMessage({
+        type: 'LOAD_STORYBOARD',
+        storyboard: storyboardWithAudio
+      }, '*');
+
+      console.log('[Export] Storyboard sent with', subtitlesWithBase64.filter(s => s.voiceover?.audioBase64).length, 'voiceovers');
+    } catch (error) {
+      console.error('[Export] Error sending storyboard to preview:', error);
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Start capturing
+    updateProgress(20, 'Starting video capture...', null);
+
+    try {
+      const stream = await previewWindow.navigator.mediaDevices.getDisplayMedia({
+        video: {
+          width: preset.width,
+          height: preset.height,
+          frameRate: 30
+        },
+        audio: true
+      });
+
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'video/webm;codecs=vp9',
+        videoBitsPerSecond: preset.videoBitsPerSecond
+      });
+
+      const chunks = [];
+      let startTime = Date.now();
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          chunks.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        console.log('[Export] Recording stopped, processing video...');
+        updateProgress(90, 'Processing video...', null);
+
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+
+        // Download
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `recording-${recordingId}-${preset.label}-${Date.now()}.webm`;
+        a.click();
+
+        URL.revokeObjectURL(url);
+        previewWindow.close();
+
+        updateProgress(100, 'Complete!', 'Done');
+
+        // Remove progress modal
+        setTimeout(() => {
+          document.body.removeChild(progressModal);
+          showModal('✅ Video exported successfully!\n\nFile saved to your Downloads folder.', {
+            title: 'Export Complete',
+            icon: '✅'
+          });
+        }, 1000);
+      };
+
+      // Start recording
+      mediaRecorder.start();
+      updateProgress(30, 'Recording in progress...', 'Please start replay in preview window');
+
+      // Monitor progress
+      const totalEvents = storyboard.timeline.length;
+      let checkInterval = setInterval(() => {
+        const elapsed = (Date.now() - startTime) / 1000;
+        updateProgress(
+          30 + ((mediaRecorder.state === 'recording' ? 50 : 0)),
+          `Recording... (${Math.floor(elapsed)}s elapsed)`,
+          'Recording...'
+        );
+      }, 1000);
+
+      // Listen for preview window close
+      const windowCheckInterval = setInterval(() => {
+        if (previewWindow.closed) {
+          clearInterval(checkInterval);
+          clearInterval(windowCheckInterval);
+          if (mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+            stream.getTracks().forEach(track => track.stop());
+          }
+        }
+      }, 500);
+
+      // Auto-stop after reasonable time (fallback)
+      setTimeout(() => {
+        if (mediaRecorder.state === 'recording') {
+          console.log('[Export] Auto-stopping recording after timeout');
+          mediaRecorder.stop();
+          stream.getTracks().forEach(track => track.stop());
+        }
+        clearInterval(checkInterval);
+        clearInterval(windowCheckInterval);
+      }, 300000); // 5 minutes max
+
+    } catch (captureError) {
+      console.error('[Export] Capture error:', captureError);
+      document.body.removeChild(progressModal);
+      previewWindow.close();
+
+      await showModal(
+        '❌ Screen capture failed.\n\nPlease select the preview window when prompted to share your screen.',
+        { title: 'Capture Failed', icon: '❌' }
+      );
+    }
+
+  } catch (error) {
+    console.error('[Export] Video export error:', error);
+    await showModal('❌ Video export failed: ' + error.message, {
+      title: 'Export Failed',
+      icon: '❌'
+    });
   }
 }
 
@@ -3246,8 +3821,17 @@ async function generateVoiceoverForSubtitle(subtitleId) {
     try {
       await saveVoiceoverToDB(blobId, audioBlob);
       console.log('[ElevenLabs] Voiceover saved to IndexedDB:', blobId);
+
+      // Verify it was actually saved
+      const verified = await getVoiceoverFromDB(blobId);
+      if (verified) {
+        console.log('[ElevenLabs] ✅ Verified voiceover in IndexedDB:', verified.size, 'bytes');
+      } else {
+        console.error('[ElevenLabs] ❌ Failed to verify voiceover in IndexedDB!');
+      }
     } catch (error) {
-      console.warn('[ElevenLabs] Failed to save voiceover to IndexedDB:', error);
+      console.error('[ElevenLabs] Failed to save voiceover to IndexedDB:', error);
+      alert('⚠️ Warning: Voiceover audio could not be saved to database.\n\nIt will work in the editor but may not be available for video export.');
     }
 
     // Store voiceover in subtitle
@@ -3310,8 +3894,34 @@ let renderWindow = null;
 let mediaRecorder = null;
 let recordedChunks = [];
 
+// Render Video - Automated video export
 renderBtn.addEventListener('click', async () => {
-  showModal('🎬 Video Rendering\n\nThe render feature is currently being refactored to work properly with browser security restrictions.\n\nFor now, you can:\n1. Use the Preview button to view your replay\n2. Use screen recording software (OBS, Loom, etc.) to record the preview\n3. Use browser extensions like "Screen Recorder" to capture the preview tab\n\nFull integrated rendering will be available in the next update!');
+  console.log('[Editor] Render Video button clicked');
+  console.log('[Editor] Storyboard:', storyboard ? 'loaded' : 'not loaded');
+  console.log('[Editor] RecordingId:', recordingId);
+
+  if (!storyboard) {
+    console.error('[Editor] No storyboard loaded');
+    await showModal('❌ No storyboard loaded.\n\nPlease load a recording first.', {
+      title: 'No Recording',
+      icon: '⚠️'
+    });
+    return;
+  }
+
+  console.log('[Editor] Calling exportAsVideo()...');
+
+  try {
+    // Call the automated video export
+    await exportAsVideo();
+    console.log('[Editor] exportAsVideo() completed');
+  } catch (error) {
+    console.error('[Editor] Error in exportAsVideo():', error);
+    await showModal('❌ Export failed: ' + error.message, {
+      title: 'Error',
+      icon: '❌'
+    });
+  }
 });
 
 /* OLD RENDER CODE - Now handled by background script
@@ -3332,10 +3942,7 @@ renderBtn.addEventListener('click', async () => {
     renderBtn.disabled = true;
     renderBtn.innerHTML = '⏳ Rendering...';
 
-    // Get recording ID from storyboard
-    const recordingId = storyboard?.meta?.recordingId;
-
-    // Build preview URL with recordingId query parameter
+    // Build preview URL with recordingId query parameter (use global recordingId)
     let previewUrl = chrome.runtime.getURL('ui/preview.html');
     if (recordingId) {
       previewUrl += `?id=${encodeURIComponent(recordingId)}`;
@@ -3607,10 +4214,7 @@ previewBtn.addEventListener('click', async () => {
   if (!storyboard) return;
 
   try {
-    // Get recording ID from storyboard
-    const recordingId = storyboard?.meta?.recordingId;
-
-    // Build preview URL with recordingId query parameter
+    // Build preview URL with recordingId query parameter (use global recordingId)
     let previewUrl = chrome.runtime.getURL('ui/preview.html');
     if (recordingId) {
       previewUrl += `?id=${encodeURIComponent(recordingId)}`;
@@ -3622,38 +4226,59 @@ previewBtn.addEventListener('click', async () => {
     const tab = await chrome.tabs.create({ url: previewUrl, active: true });
     previewTabId = tab.id;
 
-    // If no recordingId, fallback to postMessage
-    if (!recordingId) {
-      // Wait for tab to fully load using chrome.tabs.onUpdated
-      await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          listener && chrome.tabs.onUpdated.removeListener(listener);
-          reject(new Error('Tab load timeout'));
-        }, 10000);
+    // Wait for tab to fully load
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        listener && chrome.tabs.onUpdated.removeListener(listener);
+        reject(new Error('Tab load timeout'));
+      }, 10000);
 
-        const listener = (tabId, changeInfo, updatedTab) => {
-          if (tabId === tab.id && changeInfo.status === 'complete') {
-            clearTimeout(timeout);
-            chrome.tabs.onUpdated.removeListener(listener);
-            resolve();
-          }
+      const listener = (tabId, changeInfo, updatedTab) => {
+        if (tabId === tab.id && changeInfo.status === 'complete') {
+          clearTimeout(timeout);
+          chrome.tabs.onUpdated.removeListener(listener);
+          resolve();
+        }
+      };
+
+      chrome.tabs.onUpdated.addListener(listener);
+    });
+
+    // Small additional delay to ensure scripts are ready
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Prepare storyboard with base64 audio
+    console.log('[Preview] Preparing storyboard with base64 audio...');
+    const subtitlesWithBase64 = await Promise.all(subtitles.map(async sub => {
+      const subtitleCopy = { ...sub };
+      if (sub.voiceover && sub.voiceover.audioBlob) {
+        const arrayBuffer = await sub.voiceover.audioBlob.arrayBuffer();
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+        subtitleCopy.voiceover = {
+          ...sub.voiceover,
+          audioBase64: base64,
+          audioType: sub.voiceover.audioBlob.type
         };
+        delete subtitleCopy.voiceover.audioBlob; // Remove the Blob
+      }
+      return subtitleCopy;
+    }));
 
-        chrome.tabs.onUpdated.addListener(listener);
-      });
+    const storyboardWithAudio = {
+      ...storyboard,
+      subtitles: subtitlesWithBase64
+    };
 
-      // Small additional delay to ensure scripts are ready
-      await new Promise(resolve => setTimeout(resolve, 500));
+    console.log('[Preview] Sending storyboard with', subtitlesWithBase64.filter(s => s.voiceover?.audioBase64).length, 'voiceovers');
 
-      // Send storyboard to the tab
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: (sb) => {
-          window.postMessage({ type: 'LOAD_STORYBOARD', storyboard: sb }, '*');
-        },
-        args: [storyboard]
-      });
-    }
+    // Send storyboard with base64 audio to the tab
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: (sb) => {
+        window.postMessage({ type: 'LOAD_STORYBOARD', storyboard: sb }, '*');
+      },
+      args: [storyboardWithAudio]
+    });
 
     console.log('[Preview] Opened in new tab:', tab.id);
 
@@ -3687,21 +4312,26 @@ popOutPreviewBtn.addEventListener('click', async () => {
     console.log('[Preview] Current subtitles array:', subtitles);
     console.log('[Preview] Subtitles count:', subtitles.length);
 
-    // Prepare subtitles for saving (remove audioBlob, keep only blobId)
-    const subtitlesForSave = subtitles.map(sub => {
+    // Prepare subtitles with base64 audio for preview
+    const subtitlesWithBase64 = await Promise.all(subtitles.map(async sub => {
       const subtitleCopy = { ...sub };
-      if (subtitleCopy.voiceover && subtitleCopy.voiceover.audioBlob) {
-        // Remove audioBlob before saving, keep only blobId
-        const { audioBlob, ...voiceoverWithoutBlob } = subtitleCopy.voiceover;
-        subtitleCopy.voiceover = voiceoverWithoutBlob;
+      if (sub.voiceover && sub.voiceover.audioBlob) {
+        const arrayBuffer = await sub.voiceover.audioBlob.arrayBuffer();
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+        subtitleCopy.voiceover = {
+          ...sub.voiceover,
+          audioBase64: base64,
+          audioType: sub.voiceover.audioBlob.type
+        };
+        delete subtitleCopy.voiceover.audioBlob; // Remove the Blob
       }
       return subtitleCopy;
-    });
+    }));
 
-    console.log('[Preview] Subtitles prepared for saving:', subtitlesForSave);
+    console.log('[Preview] Subtitles with base64 audio:', subtitlesWithBase64.filter(s => s.voiceover?.audioBase64).length);
 
     // Add subtitles and media offsets to storyboard before previewing
-    storyboard.subtitles = subtitlesForSave;
+    storyboard.subtitles = subtitlesWithBase64;
     storyboard.originalAudioOffset = originalAudioOffset;
     storyboard.webcamOffset = webcamOffset;
 
@@ -3711,8 +4341,7 @@ popOutPreviewBtn.addEventListener('click', async () => {
       webcamOffset: storyboard.webcamOffset
     });
 
-    // Save updated storyboard to storage so preview can load it
-    const recordingId = storyboard?.meta?.recordingId;
+    // Save updated storyboard to storage so preview can load it (use global recordingId)
     if (recordingId) {
       await chrome.storage.local.set({
         [`storyboard_${recordingId}`]: JSON.stringify(storyboard)
@@ -3733,38 +4362,37 @@ popOutPreviewBtn.addEventListener('click', async () => {
     const tab = await chrome.tabs.create({ url: previewUrl, active: true });
     previewTabId = tab.id;
 
-    // If no recordingId, fallback to postMessage
-    if (!recordingId) {
-      // Wait for tab to fully load using chrome.tabs.onUpdated
-      await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          listener && chrome.tabs.onUpdated.removeListener(listener);
-          reject(new Error('Tab load timeout'));
-        }, 10000);
+    // Always send storyboard with base64 audio via postMessage
+    // Wait for tab to fully load using chrome.tabs.onUpdated
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        listener && chrome.tabs.onUpdated.removeListener(listener);
+        reject(new Error('Tab load timeout'));
+      }, 10000);
 
-        const listener = (tabId, changeInfo, updatedTab) => {
-          if (tabId === tab.id && changeInfo.status === 'complete') {
-            clearTimeout(timeout);
-            chrome.tabs.onUpdated.removeListener(listener);
-            resolve();
-          }
-        };
+      const listener = (tabId, changeInfo, updatedTab) => {
+        if (tabId === tab.id && changeInfo.status === 'complete') {
+          clearTimeout(timeout);
+          chrome.tabs.onUpdated.removeListener(listener);
+          resolve();
+        }
+      };
 
-        chrome.tabs.onUpdated.addListener(listener);
-      });
+      chrome.tabs.onUpdated.addListener(listener);
+    });
 
-      // Small additional delay to ensure scripts are ready
-      await new Promise(resolve => setTimeout(resolve, 500));
+    // Small additional delay to ensure scripts are ready
+    await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Send storyboard to the tab
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: (sb) => {
-          window.postMessage({ type: 'LOAD_STORYBOARD', storyboard: sb }, '*');
-        },
-        args: [storyboard]
-      });
-    }
+    // Send storyboard with base64 audio to the tab
+    console.log('[Preview] Sending storyboard with base64 audio via postMessage');
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: (sb) => {
+        window.postMessage({ type: 'LOAD_STORYBOARD', storyboard: sb }, '*');
+      },
+      args: [storyboard]
+    });
 
     // Auto-start replay after a short delay
     setTimeout(async () => {
@@ -3800,7 +4428,7 @@ console.log('[Timeline Editor] Ready (with Media, Subtitles, TTS & Preview suppo
 // Check for recordingId in URL parameter and auto-load
 (async function autoLoadRecording() {
   const urlParams = new URLSearchParams(window.location.search);
-  const recordingId = urlParams.get('recordingId');
+  recordingId = urlParams.get('recordingId'); // Set global recordingId
 
   if (recordingId) {
     console.log('[Timeline Editor] Auto-loading recording:', recordingId);
