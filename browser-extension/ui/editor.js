@@ -94,7 +94,7 @@ fileInput.addEventListener('change', (e) => {
         console.log('[Timeline Editor] No recordingId found in storyboard metadata');
       }
     } catch (error) {
-      alert('Failed to load storyboard: ' + error.message);
+      showModal('Failed to load storyboard: ' + error.message);
     }
   };
   reader.readAsText(file);
@@ -158,7 +158,7 @@ addEventBtn.addEventListener('click', () => {
 
   // Handle events
   if (!storyboard) {
-    alert('Please load a storyboard first');
+    showModal('Please load a storyboard first');
     return;
   }
 
@@ -192,6 +192,35 @@ addEventBtn.addEventListener('click', () => {
       break;
     case 'keypress':
       newEvent.key = 'Enter';
+      break;
+    case 'upload':
+      newEvent.files = [{
+        name: 'example.txt',
+        type: 'text/plain',
+        size: 1024
+      }];
+      newEvent.target = {
+        selectors: ['input[type="file"]']
+      };
+      break;
+    case 'hover':
+      newEvent.target = {
+        selectors: ['button'],
+        tag: 'button'
+      };
+      newEvent.position = { x: 100, y: 100 };
+      break;
+    case 'focus':
+      newEvent.target = {
+        selectors: ['input'],
+        tag: 'input'
+      };
+      break;
+    case 'blur':
+      newEvent.target = {
+        selectors: ['input'],
+        tag: 'input'
+      };
       break;
     case 'pause':
       newEvent.reason = 'Manual pause';
@@ -361,6 +390,10 @@ function getEventDescription(event) {
       return `Wait ${event.durationMs}ms`;
     case 'scroll':
       return `${event.position?.x || 0}, ${event.position?.y || 0}`;
+    case 'upload':
+      const fileCount = event.files?.length || 0;
+      const fileName = event.files?.[0]?.name || 'file';
+      return fileCount === 1 ? fileName : `${fileCount} files`;
     default:
       return event.type;
   }
@@ -1629,8 +1662,13 @@ function renderSubtitleEditor() {
   });
 
   const deleteSubBtn = document.getElementById('deleteSubBtn');
-  deleteSubBtn.addEventListener('click', () => {
-    if (confirm('Delete this text block?')) {
+  deleteSubBtn.addEventListener('click', async () => {
+    const confirmed = await showConfirm('Delete this text block?', {
+      title: 'Delete Subtitle',
+      icon: '🗑️',
+      danger: true
+    });
+    if (confirmed) {
       const index = subtitles.findIndex(s => s.id === subtitle.id);
       if (index !== -1) {
         subtitles.splice(index, 1);
@@ -1719,7 +1757,10 @@ function renderOriginalAudioDetails() {
     // Get API key
     let apiKey = localStorage.getItem('openai_api_key');
     if (!apiKey) {
-      apiKey = prompt('Enter your OpenAI API key:\n\nGet one at: https://platform.openai.com/api-keys\n\n(Your key will be stored locally in your browser)');
+      apiKey = await showPrompt('Enter your OpenAI API key:\n\nGet one at: https://platform.openai.com/api-keys\n\n(Your key will be stored locally in your browser)', '', {
+        title: 'OpenAI API Key Required',
+        icon: '🔑'
+      });
       if (!apiKey) throw new Error('API key required');
       localStorage.setItem('openai_api_key', apiKey);
     }
@@ -1793,7 +1834,10 @@ function renderOriginalAudioDetails() {
     // Get API key
     let apiKey = localStorage.getItem('elevenlabs_api_key');
     if (!apiKey) {
-      apiKey = prompt('Enter your ElevenLabs API key:\n\nGet one at: https://elevenlabs.io/app/speech-synthesis\n\n(Your key will be stored locally in your browser)');
+      apiKey = await showPrompt('Enter your ElevenLabs API key:\n\nGet one at: https://elevenlabs.io/app/speech-synthesis\n\n(Your key will be stored locally in your browser)', '', {
+        title: 'ElevenLabs API Key Required',
+        icon: '🔑'
+      });
       if (!apiKey) throw new Error('API key required');
       localStorage.setItem('elevenlabs_api_key', apiKey);
     }
@@ -1876,7 +1920,7 @@ function renderOriginalAudioDetails() {
   if (transcribeBtnPanel) {
     transcribeBtnPanel.addEventListener('click', async () => {
       if (!audioBlob) {
-        alert('No audio available to transcribe');
+        showModal('No audio available to transcribe');
         return;
       }
 
@@ -2044,10 +2088,15 @@ function renderWebcamDetails() {
 }
 
 // Delete event
-function deleteEvent() {
+async function deleteEvent() {
   if (selectedEvent === null) return;
 
-  if (confirm('Delete this event?')) {
+  const confirmed = await showConfirm('Delete this event?', {
+    title: 'Delete Event',
+    icon: '🗑️',
+    danger: true
+  });
+  if (confirmed) {
     storyboard.timeline.splice(selectedEvent, 1);
     selectedEvent = null;
     renderEventList();
@@ -2105,24 +2154,425 @@ saveBtn.addEventListener('click', async () => {
     alert(`✅ Saved successfully!\n\n- Subtitles: ${subtitlesForSave.length}\n- Voiceovers in IndexedDB\n- Downloaded JSON file\n\nYour changes have been saved and will persist.`);
   } catch (error) {
     console.error('[Editor] Save error:', error);
-    alert('❌ Error saving: ' + error.message);
+    showModal('❌ Error saving: ' + error.message);
   }
 });
 
 // Export
-exportBtn.addEventListener('click', () => {
+exportBtn.addEventListener('click', async () => {
   if (!storyboard) return;
 
   const options = [
-    'Save as JSON',
-    'Export for Replay Engine',
-    'Generate TTS Script'
+    '1. Export as ZIP (video, audio, subtitles, voiceovers, JSON)',
+    '2. Export JSON only'
   ];
 
-  alert('Export options:\n\n1. Save as JSON (downloads edited storyboard)\n2. Copy to clipboard for replay\n\nClick Save Changes to download the edited storyboard.');
+  const choice = await showPrompt(`Export options:\n\n${options.join('\n')}\n\nEnter 1 or 2:`, '1', {
+    title: 'Export Options',
+    icon: '📦'
+  });
 
-  saveBtn.click();
+  if (choice === '1') {
+    await exportAsZip();
+  } else if (choice === '2') {
+    saveBtn.click();
+  }
 });
+
+// Export everything as ZIP for manual rendering
+async function exportAsZip() {
+  try {
+    // Show loading message
+    showModal('📦 Preparing export package...\n\nThis may take a moment depending on file sizes.');
+
+    // Load JSZip dynamically
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+    document.head.appendChild(script);
+
+    await new Promise((resolve, reject) => {
+      script.onload = resolve;
+      script.onerror = () => reject(new Error('Failed to load JSZip library'));
+    });
+
+    const zip = new JSZip();
+    const recordingId = storyboard?.meta?.recordingId;
+    const projectName = storyboard?.meta?.title || 'recording';
+
+    // 1. Add timeline JSON
+    const storyboardCopy = JSON.parse(JSON.stringify(storyboard));
+    // Clean up subtitles (remove audioBlob, keep only blobId)
+    if (storyboardCopy.subtitles) {
+      storyboardCopy.subtitles = storyboardCopy.subtitles.map(sub => {
+        const copy = { ...sub };
+        if (copy.voiceover && copy.voiceover.audioBlob) {
+          delete copy.voiceover.audioBlob;
+        }
+        return copy;
+      });
+    }
+    storyboardCopy.originalAudioOffset = originalAudioOffset;
+    storyboardCopy.webcamOffset = webcamOffset;
+
+    zip.file('timeline.json', JSON.stringify(storyboardCopy, null, 2));
+    console.log('[Export] Added timeline.json');
+
+    // 2. Add original audio
+    if (audioBlob) {
+      zip.file('audio.webm', audioBlob);
+      console.log('[Export] Added audio.webm');
+    } else if (recordingId) {
+      // Try to load from IndexedDB
+      try {
+        const blob = await getAudioFromDB(recordingId);
+        if (blob) {
+          zip.file('audio.webm', blob);
+          console.log('[Export] Added audio.webm from IndexedDB');
+        }
+      } catch (error) {
+        console.warn('[Export] No audio found');
+      }
+    }
+
+    // 3. Add webcam video
+    if (webcamBlob) {
+      zip.file('webcam.webm', webcamBlob);
+      console.log('[Export] Added webcam.webm');
+    } else if (recordingId) {
+      // Try to load from IndexedDB
+      try {
+        const blob = await getWebcamFromDB(recordingId);
+        if (blob) {
+          zip.file('webcam.webm', blob);
+          console.log('[Export] Added webcam.webm from IndexedDB');
+        }
+      } catch (error) {
+        console.warn('[Export] No webcam found');
+      }
+    }
+
+    // 4. Add voiceovers
+    const voiceoversFolder = zip.folder('voiceovers');
+    for (const subtitle of subtitles) {
+      if (subtitle.voiceover) {
+        let voiceoverBlob = subtitle.voiceover.audioBlob;
+
+        // Try to load from IndexedDB if not in memory
+        if (!voiceoverBlob && subtitle.voiceover.blobId) {
+          try {
+            voiceoverBlob = await getVoiceoverFromDB(subtitle.voiceover.blobId);
+          } catch (error) {
+            console.warn('[Export] Failed to load voiceover:', subtitle.voiceover.blobId);
+          }
+        }
+
+        if (voiceoverBlob) {
+          const filename = `${subtitle.id}.webm`;
+          voiceoversFolder.file(filename, voiceoverBlob);
+          console.log('[Export] Added voiceover:', filename);
+        }
+      }
+    }
+
+    // 5. Add subtitles as SRT
+    if (subtitles.length > 0) {
+      const srtContent = generateSRT(subtitles);
+      zip.file('subtitles.srt', srtContent);
+      console.log('[Export] Added subtitles.srt');
+    }
+
+    // 6. Add render script
+    const renderScript = generateRenderScript(storyboardCopy, subtitles);
+    zip.file('render.sh', renderScript);
+    zip.file('render.bat', renderScript.replace(/\\/g, '/').replace(/\n/g, '\r\n'));
+    console.log('[Export] Added render scripts');
+
+    // 7. Add README
+    const readme = generateReadme(storyboardCopy, subtitles);
+    zip.file('README.md', readme);
+    console.log('[Export] Added README.md');
+
+    // Generate ZIP file
+    console.log('[Export] Generating ZIP file...');
+    const zipBlob = await zip.generateAsync({
+      type: 'blob',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 6 }
+    });
+
+    // Download ZIP
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${projectName}_export.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    alert(`✅ Export complete!\n\nDownloaded: ${projectName}_export.zip\n\nContents:\n- timeline.json (storyboard data)\n- audio.webm (original audio)\n- webcam.webm (webcam video)\n- voiceovers/ (generated voiceovers)\n- subtitles.srt\n- render.sh (rendering script)\n- README.md (instructions)\n\nSee README.md for rendering instructions.`);
+  } catch (error) {
+    console.error('[Export] Error:', error);
+    showModal('❌ Export failed: ' + error.message);
+  }
+}
+
+// Generate SRT format subtitles
+function generateSRT(subtitles) {
+  let srt = '';
+  subtitles.forEach((subtitle, index) => {
+    const startTime = formatSRTTime(subtitle.time);
+    const endTime = formatSRTTime(subtitle.time + subtitle.duration);
+
+    srt += `${index + 1}\n`;
+    srt += `${startTime} --> ${endTime}\n`;
+    srt += `${subtitle.text}\n\n`;
+  });
+  return srt;
+}
+
+function formatSRTTime(ms) {
+  const hours = Math.floor(ms / 3600000);
+  const minutes = Math.floor((ms % 3600000) / 60000);
+  const seconds = Math.floor((ms % 60000) / 1000);
+  const milliseconds = ms % 1000;
+
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')},${String(milliseconds).padStart(3, '0')}`;
+}
+
+// Generate render script (ffmpeg commands)
+function generateRenderScript(storyboard, subtitles) {
+  const hasAudio = audioBlob || storyboard.meta?.hasAudio;
+  const hasWebcam = webcamBlob || storyboard.meta?.hasWebcam;
+  const hasVoiceovers = subtitles.some(s => s.voiceover);
+  const audioOffset = originalAudioOffset || 0;
+  const webcamOffset = this.webcamOffset || 0;
+
+  let script = `#!/bin/bash
+# Auto-generated render script
+# This script uses ffmpeg to combine all media files
+
+echo "🎬 Starting video render..."
+
+# Check if ffmpeg is installed
+if ! command -v ffmpeg &> /dev/null; then
+    echo "❌ Error: ffmpeg is not installed"
+    echo "Install: brew install ffmpeg (macOS) or apt install ffmpeg (Linux)"
+    exit 1
+fi
+
+`;
+
+  // Concat all voiceovers into one audio track
+  if (hasVoiceovers) {
+    script += `# Step 1: Combine voiceovers with proper timing\n`;
+    script += `echo "📝 Processing voiceovers..."\n\n`;
+
+    // Create filter complex for voiceover audio mixing
+    script += `# Create silence base track\n`;
+    const totalDuration = Math.max(...subtitles.map(s => s.time + s.duration)) / 1000;
+    script += `ffmpeg -f lavfi -i anullsrc=r=48000:cl=stereo -t ${totalDuration} -y voiceover_base.wav\n\n`;
+
+    subtitles.forEach((subtitle, idx) => {
+      if (subtitle.voiceover) {
+        const delaySeconds = subtitle.time / 1000;
+        script += `# Add voiceover ${idx + 1} at ${delaySeconds}s\n`;
+        script += `ffmpeg -i voiceover_base.wav -i voiceovers/${subtitle.id}.webm -filter_complex "[1]adelay=${Math.round(delaySeconds * 1000)}|${Math.round(delaySeconds * 1000)}[delayed];[0][delayed]amix=inputs=2:duration=longest" -y voiceover_temp_${idx}.wav\n`;
+        script += `mv voiceover_temp_${idx}.wav voiceover_base.wav\n\n`;
+      }
+    });
+
+    script += `mv voiceover_base.wav voiceover_final.wav\n\n`;
+  }
+
+  // Main render command
+  script += `# Step 2: Combine all tracks\n`;
+  script += `echo "🎥 Rendering final video..."\n\n`;
+
+  let inputs = '';
+  let filterComplex = '';
+  let maps = '';
+  let inputIdx = 0;
+
+  // Add webcam as base video
+  if (hasWebcam) {
+    inputs += `-itsoffset ${webcamOffset / 1000} -i webcam.webm `;
+    filterComplex = `[0:v]`;
+    maps = `-map 0:v `;
+    inputIdx++;
+  } else {
+    // Create blank video
+    inputs += `-f lavfi -i color=c=black:s=1280x720:r=30 -t ${totalDuration || 10} `;
+    filterComplex = `[0:v]`;
+    maps = `-map 0:v `;
+    inputIdx++;
+  }
+
+  // Add audio tracks
+  const audioTracks = [];
+  if (hasAudio) {
+    inputs += `-itsoffset ${audioOffset / 1000} -i audio.webm `;
+    audioTracks.push(`[${inputIdx}:a]`);
+    inputIdx++;
+  }
+
+  if (hasVoiceovers) {
+    inputs += `-i voiceover_final.wav `;
+    audioTracks.push(`[${inputIdx}:a]`);
+    inputIdx++;
+  }
+
+  // Mix audio tracks
+  if (audioTracks.length > 0) {
+    filterComplex += `${audioTracks.join('')}amix=inputs=${audioTracks.length}:duration=longest[aout]`;
+    maps += `-map "[aout]" `;
+  }
+
+  script += `ffmpeg ${inputs}`;
+
+  if (filterComplex) {
+    script += `-filter_complex "${filterComplex}" `;
+  }
+
+  script += `${maps}`;
+
+  // Add subtitles
+  if (subtitles.length > 0) {
+    script += `-vf "subtitles=subtitles.srt:force_style='FontName=Space Grotesk,FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,Outline=2,Shadow=1'" `;
+  }
+
+  script += `-c:v libx264 -preset medium -crf 23 -c:a aac -b:a 128k -y output.mp4\n\n`;
+
+  script += `echo "✅ Render complete: output.mp4"\n`;
+  script += `echo "📊 File size: $(du -h output.mp4 | cut -f1)"\n`;
+
+  // Cleanup
+  if (hasVoiceovers) {
+    script += `\n# Cleanup temporary files\nrm -f voiceover_final.wav\n`;
+  }
+
+  return script;
+}
+
+// Generate README with instructions
+function generateReadme(storyboard, subtitles) {
+  const hasAudio = audioBlob || storyboard.meta?.hasAudio;
+  const hasWebcam = webcamBlob || storyboard.meta?.hasWebcam;
+  const hasVoiceovers = subtitles.some(s => s.voiceover);
+
+  return `# Video Render Package
+
+## Contents
+
+- **timeline.json** - Complete storyboard data with events and timing
+- **audio.webm** - Original recorded audio ${hasAudio ? '✅' : '❌'}
+- **webcam.webm** - Webcam video recording ${hasWebcam ? '✅' : '❌'}
+- **voiceovers/** - Generated voiceover audio files ${hasVoiceovers ? `✅ (${subtitles.filter(s => s.voiceover).length} files)` : '❌'}
+- **subtitles.srt** - Subtitles in SRT format ${subtitles.length > 0 ? `✅ (${subtitles.length} subtitles)` : '❌'}
+- **render.sh** - Automated rendering script (Unix/Mac)
+- **render.bat** - Automated rendering script (Windows)
+
+## Project Info
+
+- **Title**: ${storyboard.meta?.title || 'Untitled'}
+- **Duration**: ${formatTime(Math.max(...(storyboard.events || []).map(e => e.time || 0)))}
+- **Events**: ${(storyboard.events || []).length}
+- **Subtitles**: ${subtitles.length}
+- **Original Audio Offset**: ${originalAudioOffset}ms
+- **Webcam Offset**: ${webcamOffset}ms
+
+## Requirements
+
+Install ffmpeg:
+\`\`\`bash
+# macOS
+brew install ffmpeg
+
+# Ubuntu/Debian
+sudo apt install ffmpeg
+
+# Windows
+# Download from https://ffmpeg.org/download.html
+\`\`\`
+
+## Quick Start
+
+### Option 1: Automated Rendering (Recommended)
+
+**Unix/Mac:**
+\`\`\`bash
+chmod +x render.sh
+./render.sh
+\`\`\`
+
+**Windows:**
+\`\`\`cmd
+render.bat
+\`\`\`
+
+Output: **output.mp4**
+
+### Option 2: Manual Rendering
+
+**Basic video with subtitles:**
+\`\`\`bash
+ffmpeg -i webcam.webm -vf "subtitles=subtitles.srt" output.mp4
+\`\`\`
+
+**Video + audio + subtitles:**
+\`\`\`bash
+ffmpeg -i webcam.webm -i audio.webm -c:v copy -c:a aac -vf "subtitles=subtitles.srt" output.mp4
+\`\`\`
+
+**Video + audio + voiceovers + subtitles:**
+See render.sh for the complete command chain.
+
+## Customization
+
+Edit **render.sh** to customize:
+- Video quality (change \`-crf 23\` to 18-28)
+- Audio bitrate (change \`-b:a 128k\`)
+- Subtitle styling (edit \`force_style\` parameters)
+- Output resolution
+
+## Subtitle Styling
+
+Current style in render.sh:
+- Font: Space Grotesk
+- Size: 24
+- Color: White
+- Outline: Black (2px)
+- Shadow: Enabled
+
+Edit the \`force_style\` parameter to customize.
+
+## Troubleshooting
+
+**"command not found: ffmpeg"**
+- Install ffmpeg (see Requirements above)
+
+**"No such file or directory"**
+- Make sure all files are in the same directory
+- Check that voiceovers folder exists
+
+**Audio out of sync**
+- Check audio/webcam offsets in timeline.json
+- Adjust \`-itsoffset\` values in render script
+
+**Subtitles not showing**
+- Verify subtitles.srt exists
+- Check subtitle timing in SRT file
+
+## Support
+
+For issues with:
+- **Rendering**: Check ffmpeg documentation
+- **Timeline data**: Open timeline.json to inspect
+- **Export**: Re-export from browser extension
+
+---
+
+Generated by WebReplay Browser Extension
+`;
+}
 
 // ========================================
 // Media Player & Subtitles Features
@@ -2210,7 +2660,7 @@ function loadMediaFiles() {
 if (transcribeBtn) {
   transcribeBtn.addEventListener('click', async () => {
   if (!mediaFiles.audio && !audioPlayer.src) {
-    alert('Please load an audio file first.\n\nYou can load audio by:\n1. Recording with audio enabled, or\n2. Using "Load Media" button to upload an audio file');
+    showModal('Please load an audio file first.\n\nYou can load audio by:\n1. Recording with audio enabled, or\n2. Using "Load Media" button to upload an audio file');
     return;
   }
 
@@ -2223,7 +2673,10 @@ if (transcribeBtn) {
   // Check for API key
   let apiKey = localStorage.getItem(storageKey);
   if (!apiKey) {
-    apiKey = prompt(`Enter your ${providerName} API key:\n\nGet one at: ${apiKeyUrl}\n\n(Your key will be stored locally in your browser)`);
+    apiKey = await showPrompt(`Enter your ${providerName} API key:\n\nGet one at: ${apiKeyUrl}\n\n(Your key will be stored locally in your browser)`, '', {
+      title: `${providerName} API Key Required`,
+      icon: '🔑'
+    });
     if (!apiKey) return;
     localStorage.setItem(storageKey, apiKey);
   }
@@ -2388,9 +2841,12 @@ function showManualTranscriptionUI() {
     addBtn.className = 'btn-primary btn-small';
     addBtn.innerHTML = '➕ Add Subtitle at Current Time';
     addBtn.style.margin = '8px 12px';
-    addBtn.addEventListener('click', () => {
+    addBtn.addEventListener('click', async () => {
       const time = audioPlayer.currentTime * 1000; // Convert to ms
-      const text = prompt('Enter subtitle text:');
+      const text = await showPrompt('Enter subtitle text:', '', {
+        title: 'Add Subtitle',
+        icon: '📝'
+      });
 
       if (text) {
         addSubtitle(time, text);
@@ -2484,7 +2940,7 @@ const updateSubtitlesList = renderSubtitles;
 // Export subtitles as SRT
 exportSubsBtn.addEventListener('click', () => {
   if (subtitles.length === 0) {
-    alert('No subtitles to export');
+    showModal('No subtitles to export');
     return;
   }
 
@@ -2499,12 +2955,18 @@ exportSubsBtn.addEventListener('click', () => {
 
   URL.revokeObjectURL(url);
 
-  alert('Subtitles exported as SRT file!');
+  showModal('Subtitles exported as SRT file!');
 });
 
 // Clear subtitles
-clearSubsBtn.addEventListener('click', () => {
-  if (confirm('Clear all subtitles?')) {
+clearSubsBtn.addEventListener('click', async () => {
+  const confirmed = await showConfirm('Clear all subtitles?', {
+    title: 'Clear Subtitles',
+    icon: '⚠️',
+    danger: true,
+    confirmText: 'Clear All'
+  });
+  if (confirmed) {
     subtitles = [];
     renderSubtitles();
   }
@@ -2520,26 +2982,36 @@ manualTranscribeBtn.addEventListener('click', () => {
 });
 
 // Change transcription API key button
-changeApiKeyBtn.addEventListener('click', () => {
+changeApiKeyBtn.addEventListener('click', async () => {
   const provider = transcriptionProvider.value;
   const isOpenAI = provider === 'openai';
   const storageKey = isOpenAI ? 'openai_api_key' : 'elevenlabs_stt_api_key';
   const providerName = isOpenAI ? 'OpenAI Whisper' : 'ElevenLabs Speech-to-Text';
 
   const currentKey = localStorage.getItem(storageKey);
-  const newKey = prompt(
+  const newKey = await showPrompt(
     `Change ${providerName} API Key:\n\nCurrent: ` + (currentKey ? currentKey.substring(0, 10) + '...' : 'Not set') + '\n\nEnter new API key (or leave blank to remove):',
-    ''
+    '',
+    {
+      title: `Change ${providerName} Key`,
+      icon: '🔑'
+    }
   );
 
   if (newKey === null) return; // Cancelled
 
   if (newKey.trim() === '') {
     localStorage.removeItem(storageKey);
-    alert(`${providerName} API key removed. You will be prompted for a new key on next transcription.`);
+    showModal(`${providerName} API key removed. You will be prompted for a new key on next transcription.`, {
+      title: 'API Key Removed',
+      icon: '✅'
+    });
   } else {
     localStorage.setItem(storageKey, newKey.trim());
-    alert(`${providerName} API key updated successfully!`);
+    showModal(`${providerName} API key updated successfully!`, {
+      title: 'API Key Updated',
+      icon: '✅'
+    });
   }
 });
 
@@ -2630,13 +3102,16 @@ let voiceoverAudio = null;
 
 generateVoiceoverBtn.addEventListener('click', async () => {
   if (subtitles.length === 0) {
-    alert('No subtitles to generate voiceover from');
+    showModal('No subtitles to generate voiceover from');
     return;
   }
 
   // Prompt for API key if not set
   if (!elevenlabsApiKey) {
-    elevenlabsApiKey = prompt('Enter your ElevenLabs API key:');
+    elevenlabsApiKey = await showPrompt('Enter your ElevenLabs API key:', '', {
+      title: 'ElevenLabs API Key Required',
+      icon: '🔑'
+    });
     if (!elevenlabsApiKey) return;
     localStorage.setItem('elevenlabs_api_key', elevenlabsApiKey);
   }
@@ -2689,11 +3164,11 @@ generateVoiceoverBtn.addEventListener('click', async () => {
       updateRenderButtonState(); // Enable render button
     }, 100);
 
-    alert('Voiceover generated successfully! ✅\n\nYou can now see the voiceover track on the timeline.');
+    showModal('Voiceover generated successfully! ✅\n\nYou can now see the voiceover track on the timeline.');
 
   } catch (error) {
     console.error('[ElevenLabs] Error:', error);
-    alert('Failed to generate voiceover: ' + error.message + '\n\nPlease check your API key and try again.');
+    showModal('Failed to generate voiceover: ' + error.message + '\n\nPlease check your API key and try again.');
 
     // Clear saved API key on auth error
     if (error.message.includes('unauthorized') || error.message.includes('invalid')) {
@@ -2710,13 +3185,16 @@ generateVoiceoverBtn.addEventListener('click', async () => {
 async function generateVoiceoverForSubtitle(subtitleId) {
   const subtitle = subtitles.find(s => s.id === subtitleId);
   if (!subtitle) {
-    alert('Text block not found');
+    showModal('Text block not found');
     return;
   }
 
   // Prompt for API key if not set
   if (!elevenlabsApiKey) {
-    elevenlabsApiKey = prompt('Enter your ElevenLabs API key:\n\nGet one at: https://elevenlabs.io/app/speech-synthesis\n\n(Your key will be stored locally in your browser)');
+    elevenlabsApiKey = await showPrompt('Enter your ElevenLabs API key:\n\nGet one at: https://elevenlabs.io/app/speech-synthesis\n\n(Your key will be stored locally in your browser)', '', {
+      title: 'ElevenLabs API Key Required',
+      icon: '🔑'
+    });
     if (!elevenlabsApiKey) return;
     localStorage.setItem('elevenlabs_api_key', elevenlabsApiKey);
   }
@@ -2787,11 +3265,11 @@ async function generateVoiceoverForSubtitle(subtitleId) {
     renderSubtitleEditor(); // Refresh editor to show voiceover status
     updateRenderButtonState(); // Enable render button if needed
 
-    alert('Voiceover generated successfully! ✅\n\nYou can now see it on the voiceover track and adjust its timing by dragging.');
+    showModal('Voiceover generated successfully! ✅\n\nYou can now see it on the voiceover track and adjust its timing by dragging.');
 
   } catch (error) {
     console.error('[ElevenLabs] Error:', error);
-    alert('Failed to generate voiceover: ' + error.message + '\n\nPlease check your API key and try again.');
+    showModal('Failed to generate voiceover: ' + error.message + '\n\nPlease check your API key and try again.');
 
     // Clear saved API key on auth error
     if (error.message.includes('unauthorized') || error.message.includes('invalid')) {
@@ -2833,20 +3311,20 @@ let mediaRecorder = null;
 let recordedChunks = [];
 
 renderBtn.addEventListener('click', async () => {
-  alert('🎬 Video Rendering\n\nThe render feature is currently being refactored to work properly with browser security restrictions.\n\nFor now, you can:\n1. Use the Preview button to view your replay\n2. Use screen recording software (OBS, Loom, etc.) to record the preview\n3. Use browser extensions like "Screen Recorder" to capture the preview tab\n\nFull integrated rendering will be available in the next update!');
+  showModal('🎬 Video Rendering\n\nThe render feature is currently being refactored to work properly with browser security restrictions.\n\nFor now, you can:\n1. Use the Preview button to view your replay\n2. Use screen recording software (OBS, Loom, etc.) to record the preview\n3. Use browser extensions like "Screen Recorder" to capture the preview tab\n\nFull integrated rendering will be available in the next update!');
 });
 
 /* OLD RENDER CODE - Now handled by background script
 renderBtn.addEventListener('click', async () => {
   if (!storyboard) {
-    alert('No storyboard loaded');
+    showModal('No storyboard loaded');
     return;
   }
 
   // Check if any subtitles have voiceovers
   const hasVoiceovers = subtitles.some(sub => sub.voiceover && sub.voiceover.audioBlob);
   if (!hasVoiceovers && !audioBlob) {
-    alert('No voiceovers or audio to render.\n\nPlease either:\n1. Generate voiceovers for your text blocks, or\n2. Record with audio enabled');
+    showModal('No voiceovers or audio to render.\n\nPlease either:\n1. Generate voiceovers for your text blocks, or\n2. Record with audio enabled');
     return;
   }
 
@@ -3030,7 +3508,7 @@ renderBtn.addEventListener('click', async () => {
       renderBtn.disabled = false;
       renderBtn.innerHTML = '🎥 Render Video';
 
-      alert('Video rendered successfully! ✅\n\nThe video has been downloaded to your downloads folder.');
+      showModal('Video rendered successfully! ✅\n\nThe video has been downloaded to your downloads folder.');
     };
 
     // Start recording
@@ -3103,7 +3581,7 @@ renderBtn.addEventListener('click', async () => {
 
   } catch (error) {
     console.error('[Render] Error:', error);
-    alert('Failed to render video: ' + error.message);
+    showModal('Failed to render video: ' + error.message);
 
     renderBtn.disabled = false;
     renderBtn.innerHTML = '🎥 Render Video';
@@ -3181,7 +3659,7 @@ previewBtn.addEventListener('click', async () => {
 
   } catch (error) {
     console.error('[Preview] Error opening tab:', error);
-    alert('Failed to open preview in new tab: ' + error.message + '\n\nPlease try again.');
+    showModal('Failed to open preview in new tab: ' + error.message + '\n\nPlease try again.');
   }
 });
 
@@ -3306,7 +3784,7 @@ popOutPreviewBtn.addEventListener('click', async () => {
 
   } catch (error) {
     console.error('[Preview] Error opening tab:', error);
-    alert('Failed to open preview in new tab: ' + error.message + '\n\nPlease try again.');
+    showModal('Failed to open preview in new tab: ' + error.message + '\n\nPlease try again.');
   }
 });
 
@@ -3419,11 +3897,11 @@ console.log('[Timeline Editor] Ready (with Media, Subtitles, TTS & Preview suppo
         console.log('[Timeline Editor] Recording loaded successfully');
       } else {
         console.error('[Timeline Editor] Recording not found:', recordingId);
-        alert('Recording not found: ' + recordingId);
+        showModal('Recording not found: ' + recordingId);
       }
     } catch (error) {
       console.error('[Timeline Editor] Error auto-loading recording:', error);
-      alert('Failed to load recording: ' + error.message);
+      showModal('Failed to load recording: ' + error.message);
     }
   }
 })();

@@ -4,69 +4,109 @@
   <meta charset="UTF-8">
   <title>Replay Preview</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
     body {
       margin: 0;
-      padding: 20px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #fafafa;
+      padding: 0;
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #ffffff;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .layout {
+      display: flex;
+      height: 100vh;
+    }
+
+    .sidebar {
+      width: 200px;
+      background: #f9fafb;
+      border-right: 1px solid #e5e7eb;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      gap: 16px;
     }
 
     .controls {
-      position: fixed;
-      top: 20px;
-      left: 20px;
-      z-index: 1000;
-      background: white;
-      padding: 12px 16px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
       display: flex;
-      gap: 12px;
-      align-items: center;
+      flex-direction: column;
+      gap: 8px;
     }
 
     .controls button {
-      background: #1976d2;
+      background: #2563eb;
       color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
+      border: 1px solid #2563eb;
+      padding: 10px 16px;
+      border-radius: 8px;
       cursor: pointer;
-      font-size: 12px;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: 'Space Grotesk', sans-serif;
+      transition: all 0.3s ease-out;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      width: 100%;
     }
 
     .controls button:hover {
-      background: #1565c0;
+      background: #1d4ed8;
+      border-color: #1d4ed8;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 12px rgba(37, 99, 235, 0.3);
     }
 
     .status {
       font-size: 12px;
-      color: #666;
+      color: #374151;
       font-weight: 500;
+      text-align: center;
+      padding: 8px;
+      background: #ffffff;
+      border-radius: 6px;
+      border: 1px solid #e5e7eb;
+    }
+
+    #eventLog {
+      flex: 1;
+      font-family: 'Space Grotesk', monospace;
+      font-size: 11px;
+      overflow-y: auto;
+      background: #ffffff;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      color: #374151;
     }
 
     .event-indicator {
       position: fixed;
       bottom: 20px;
-      left: 20px;
-      background: #1976d2;
+      left: 220px;
+      background: #2563eb;
       color: white;
       padding: 12px 16px;
       border-radius: 8px;
-      font-size: 13px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      border: 1px solid #2563eb;
       z-index: 10000;
       display: none;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    .main-content {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
     }
 
     .replay-frame {
-      background: white;
-      border: 2px solid #e0e0e0;
-      border-radius: 8px;
-      margin: 20px auto;
-      padding: 20px;
-      max-width: 1200px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      width: 100%;
+      height: 100%;
       position: relative;
     }
 
@@ -76,25 +116,65 @@
       right: 0;
       z-index: 9999;
       text-align: center;
-      padding: 12px 24px;
+      padding: 20px 40px;
       pointer-events: none;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
-      font-weight: bold;
-      line-height: 1.4;
+      text-shadow:
+        2px 2px 8px rgba(0, 0, 0, 0.95),
+        -1px -1px 4px rgba(0, 0, 0, 0.8),
+        1px 1px 4px rgba(0, 0, 0, 0.8),
+        0 0 16px rgba(0, 0, 0, 0.9);
+      font-weight: 700;
+      line-height: 1.5;
       display: none;
+      font-family: 'Space Grotesk', sans-serif;
+      background: linear-gradient(to bottom,
+                  rgba(0, 0, 0, 0) 0%,
+                  rgba(0, 0, 0, 0.75) 50%,
+                  rgba(0, 0, 0, 0) 100%);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      letter-spacing: 0.02em;
     }
 
     .subtitle-display.top {
-      top: 40px;
+      top: 0;
+      padding-top: 40px;
     }
 
     .subtitle-display.middle {
       top: 50%;
       transform: translateY(-50%);
+      background: linear-gradient(to right,
+                  rgba(0, 0, 0, 0) 0%,
+                  rgba(0, 0, 0, 0.7) 50%,
+                  rgba(0, 0, 0, 0) 100%);
     }
 
     .subtitle-display.bottom {
-      bottom: 40px;
+      bottom: 0;
+      padding-bottom: 40px;
+    }
+
+    @keyframes subtitleFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes subtitleFadeOut {
+      from {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      to {
+        opacity: 0;
+        transform: translateY(20px);
+      }
     }
 
     @keyframes clickPulse {
@@ -114,24 +194,58 @@
         border-width: 1px;
       }
     }
+
+    .fake-cursor {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      pointer-events: none;
+      z-index: 9998;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: none;
+    }
+
+    .fake-cursor svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    }
   </style>
 </head>
 <body>
-  <div class="controls">
-    <button id="startBtn">▶️ Start</button>
-    <button id="stopBtn">⏹️ Stop</button>
-    <div class="status" id="status">Ready</div>
+  <div class="layout">
+    <!-- Left Sidebar -->
+    <div class="sidebar">
+      <div class="controls">
+        <button id="startBtn">▶️ Start</button>
+        <button id="stopBtn">⏹️ Stop</button>
+        <div class="status" id="status">Ready</div>
+      </div>
+      <div id="eventLog"></div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+      <div class="event-indicator" id="eventIndicator"></div>
+
+      <div id="corsWarning" style="display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #fef2f2; color: #991b1b; padding: 12px 20px; border-radius: 8px; border: 1px solid #fee2e2; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 10000; max-width: 600px; font-size: 13px; font-family: 'Space Grotesk', sans-serif;">
+        ⚠️ <strong>Cross-Origin Warning:</strong> Cannot interact with iframe content due to browser security. Events will be visualized but not executed.
+      </div>
+
+      <div class="replay-frame">
+        <iframe id="pageFrame" style="width: 100%; height: 100%; border: none; background: white; display: block;"></iframe>
+        <div id="subtitleDisplay" class="subtitle-display bottom"></div>
+        <div id="clickMarker" style="position: absolute; width: 24px; height: 24px; border: 3px solid #ef4444; border-radius: 50%; display: none; pointer-events: none; transform: translate(-50%, -50%); z-index: 10000;"></div>
+        <div id="fakeCursor" class="fake-cursor">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M5.5 3.21V20.8l5.2-4.57 3.06 6.47 3.81-1.94-3.06-6.47 7.66-.43L5.5 3.21z" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+          </svg>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div class="event-indicator" id="eventIndicator"></div>
-
-  <div class="replay-frame" style="position: relative;">
-    <div id="subtitleDisplay" class="subtitle-display bottom"></div>
-    <iframe id="pageFrame" style="width: 100%; height: 600px; border: 1px solid #ddd; background: white;"></iframe>
-    <div id="clickMarker" style="position: absolute; width: 20px; height: 20px; border: 3px solid #f44336; border-radius: 50%; display: none; pointer-events: none; transform: translate(-50%, -50%); z-index: 10000;"></div>
-    <div id="eventLog" style="margin-top: 12px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; background: #f5f5f5; padding: 8px; border-radius: 4px;"></div>
-  </div>
-
+  <script src="modal.js"></script>
   <script src="preview.js"></script>
 </body>
 </html>

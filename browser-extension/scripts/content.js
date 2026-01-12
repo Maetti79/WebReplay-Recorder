@@ -129,12 +129,85 @@ function recordInput(event) {
   inputTimers.set(element, timer);
 }
 
-// Record keyboard events (for shortcuts)
+// Record file uploads
+function recordFileUpload(event) {
+  if (!isRecording) return;
+
+  const element = event.target;
+
+  // Only handle file inputs
+  if (element.tagName !== 'INPUT' || element.type !== 'file') return;
+
+  const files = Array.from(element.files);
+  if (files.length === 0) return;
+
+  const target = generateSelectors(element);
+
+  // Read files and store their data
+  const filePromises = files.map(file => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        resolve({
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          lastModified: file.lastModified,
+          data: e.target.result // Base64 data URL
+        });
+      };
+      reader.onerror = () => {
+        console.error('[Recorder] Failed to read file:', file.name);
+        resolve(null);
+      };
+      reader.readAsDataURL(file);
+    });
+  });
+
+  // Wait for all files to be read
+  Promise.all(filePromises).then(fileData => {
+    const validFiles = fileData.filter(f => f !== null);
+
+    if (validFiles.length > 0) {
+      const uploadData = {
+        t: getTimestamp(),
+        type: 'upload',
+        target,
+        files: validFiles,
+        multiple: element.multiple
+      };
+
+      recordedEvents.push(uploadData);
+      console.log('[Recorder] File upload recorded:', validFiles.length, 'file(s)');
+    }
+  });
+}
+
+// Record keyboard events (for shortcuts and special keys)
 function recordKeydown(event) {
   if (!isRecording) return;
 
-  // Only record special keys
-  if (event.key === 'Enter' || event.key === 'Tab' || event.key === 'Escape') {
+  // Don't record if typing in input field (handled by recordInput)
+  const isTextInput = event.target.tagName === 'INPUT' ||
+                      event.target.tagName === 'TEXTAREA' ||
+                      event.target.isContentEditable;
+
+  // Record special keys or shortcuts
+  const isSpecialKey = event.key === 'Enter' ||
+                       event.key === 'Tab' ||
+                       event.key === 'Escape' ||
+                       event.key === 'Backspace' ||
+                       event.key === 'Delete' ||
+                       event.key.startsWith('Arrow') ||
+                       event.key === 'Home' ||
+                       event.key === 'End' ||
+                       event.key === 'PageUp' ||
+                       event.key === 'PageDown';
+
+  const hasModifier = event.ctrlKey || event.altKey || event.metaKey;
+
+  // Record if it's a special key, has modifiers, or is not in a text input
+  if (isSpecialKey || hasModifier || !isTextInput) {
     const keyData = {
       t: getTimestamp(),
       type: 'keypress',
@@ -144,7 +217,8 @@ function recordKeydown(event) {
         alt: event.altKey,
         shift: event.shiftKey,
         meta: event.metaKey
-      }
+      },
+      target: isTextInput ? generateSelectors(event.target) : null
     };
 
     recordedEvents.push(keyData);
@@ -195,6 +269,84 @@ function recordScroll(event) {
     recordedEvents.push(scrollData);
     console.log('[Recorder] Scroll recorded:', scrollData);
   }, 300);
+}
+
+// Record hover events (mouseover/mouseout)
+let lastHoverTarget = null;
+let hoverTimer = null;
+
+function recordMouseOver(event) {
+  if (!isRecording) return;
+
+  const element = event.target;
+
+  // Ignore if hovering over same element
+  if (element === lastHoverTarget) return;
+
+  // Debounce to avoid recording too many hover events
+  if (hoverTimer) {
+    clearTimeout(hoverTimer);
+  }
+
+  hoverTimer = setTimeout(() => {
+    const target = generateSelectors(element);
+
+    const hoverData = {
+      t: getTimestamp(),
+      type: 'hover',
+      target,
+      position: {
+        x: event.clientX,
+        y: event.clientY
+      }
+    };
+
+    recordedEvents.push(hoverData);
+    console.log('[Recorder] Hover recorded:', hoverData);
+    lastHoverTarget = element;
+  }, 200); // Wait 200ms to avoid recording rapid hovers
+}
+
+function recordMouseOut(event) {
+  if (!isRecording) return;
+
+  // Clear last hover target when mouse leaves
+  if (event.target === lastHoverTarget) {
+    lastHoverTarget = null;
+  }
+}
+
+// Record focus/blur events
+function recordFocus(event) {
+  if (!isRecording) return;
+
+  const element = event.target;
+  const target = generateSelectors(element);
+
+  const focusData = {
+    t: getTimestamp(),
+    type: 'focus',
+    target
+  };
+
+  recordedEvents.push(focusData);
+  console.log('[Recorder] Focus recorded:', focusData);
+}
+
+function recordBlur(event) {
+  if (!isRecording) return;
+
+  const element = event.target;
+  const target = generateSelectors(element);
+
+  const blurData = {
+    t: getTimestamp(),
+    type: 'blur',
+    target
+  };
+
+  recordedEvents.push(blurData);
+  console.log('[Recorder] Blur recorded:', blurData);
 }
 
 // Sync events to background periodically (in case of navigation)
@@ -271,8 +423,13 @@ function stopRecording() {
 // Event listeners
 document.addEventListener('click', recordClick, true);
 document.addEventListener('input', recordInput, true);
+document.addEventListener('change', recordFileUpload, true);
 document.addEventListener('keydown', recordKeydown, true);
 document.addEventListener('scroll', recordScroll, true);
+document.addEventListener('mouseover', recordMouseOver, true);
+document.addEventListener('mouseout', recordMouseOut, true);
+document.addEventListener('focus', recordFocus, true);
+document.addEventListener('blur', recordBlur, true);
 
 // Check for navigation changes
 setInterval(checkNavigation, 1000);

@@ -782,7 +782,11 @@
             <select id="addEventType" style="flex: 1; padding: 8px 10px; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; color: #111827; font-size: 13px; cursor: pointer; font-family: 'Space Grotesk', sans-serif; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
               <option value="navigate">🌐 Navigate</option>
               <option value="click">👆 Click</option>
+              <option value="hover">🖱️ Hover</option>
+              <option value="focus">🎯 Focus</option>
+              <option value="blur">💨 Blur</option>
               <option value="type">⌨️ Type</option>
+              <option value="upload">📎 Upload File</option>
               <option value="scroll">📜 Scroll</option>
               <option value="keypress">🔑 Keypress</option>
               <option value="pause">⏸️ Pause</option>
@@ -880,6 +884,7 @@
 
   <input type="file" id="fileInput" accept=".json">
 
+  <script src="modal.js"></script>
   <script src="editor.js"></script>
 </body>
 </html>

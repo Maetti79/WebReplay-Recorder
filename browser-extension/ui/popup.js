@@ -94,7 +94,7 @@ async function startRecording(recordingId = null) {
       });
 
       if (!response.success) {
-        alert('Failed to start recording: ' + response.error);
+        showModal('Failed to start recording: ' + response.error);
         return;
       }
 
@@ -121,7 +121,7 @@ async function startRecording(recordingId = null) {
 
   } catch (error) {
     console.error('Error starting recording:', error);
-    alert('Failed to start recording: ' + error.message);
+    showModal('Failed to start recording: ' + error.message);
   }
 }
 
@@ -240,18 +240,18 @@ async function downloadFile(recordingId, fileType) {
     });
 
     if (!response) {
-      alert('Failed to download: No response from background script');
+      showModal('Failed to download: No response from background script');
       return;
     }
 
     if (!response.success) {
-      alert('Failed to download: ' + (response.error || 'Unknown error'));
+      showModal('Failed to download: ' + (response.error || 'Unknown error'));
     } else {
       console.log(`[Popup] Download ${fileType} successful`);
     }
   } catch (error) {
     console.error('Error downloading file:', error);
-    alert('Failed to download: ' + error.message);
+    showModal('Failed to download: ' + error.message);
   }
 }
 
@@ -263,7 +263,13 @@ function openEditor(recordingId) {
 
 // Delete recording
 async function deleteRecording(recordingId) {
-  if (!confirm('Delete this recording? This cannot be undone.\n\nThis will remove:\n- Storyboard JSON\n- Audio recording\n- Webcam video\n- All recording chunks')) {
+  const confirmed = await showConfirm('Delete this recording? This cannot be undone.\n\nThis will remove:\n- Storyboard JSON\n- Audio recording\n- Webcam video\n- All recording chunks', {
+    title: 'Delete Recording',
+    icon: '🗑️',
+    danger: true,
+    confirmText: 'Delete'
+  });
+  if (!confirmed) {
     return;
   }
 
@@ -276,7 +282,7 @@ async function deleteRecording(recordingId) {
     });
 
     if (!response) {
-      alert('Failed to delete: No response from background script');
+      showModal('Failed to delete: No response from background script');
       return;
     }
 
@@ -291,11 +297,11 @@ async function deleteRecording(recordingId) {
         loadRecentRecordings();
       }, 1000);
     } else {
-      alert('Failed to delete: ' + (response.error || 'Unknown error'));
+      showModal('Failed to delete: ' + (response.error || 'Unknown error'));
     }
   } catch (error) {
     console.error('[Popup] Error deleting recording:', error);
-    alert('Failed to delete: ' + error.message);
+    showModal('Failed to delete: ' + error.message);
   }
 }
 
@@ -369,7 +375,7 @@ webcamToggle.addEventListener('dblclick', async () => {
     }, 3000);
   } catch (error) {
     console.error('Webcam preview error:', error);
-    alert('Could not access webcam: ' + error.message);
+    showModal('Could not access webcam: ' + error.message);
   }
 });
 

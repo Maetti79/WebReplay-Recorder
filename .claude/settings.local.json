@@ -12,7 +12,8 @@
       "Bash(echo:*)",
       "WebFetch(domain:elevenlabs.io)",
       "WebFetch(domain:blocksign.io)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "Bash(grep:*)"
     ]
   }
 }
