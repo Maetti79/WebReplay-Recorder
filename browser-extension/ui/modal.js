@@ -110,7 +110,7 @@ function initModal() {
       color: #6b7280;
       line-height: 1.5;
       margin-bottom: 20px;
-      white-space: pre-wrap;
+    
       text-align: left;
     }
 

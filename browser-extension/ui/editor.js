@@ -4480,60 +4480,72 @@ async function showConfigDialog() {
   const elevenlabsSttKey = localStorage.getItem('elevenlabs_stt_api_key') || '';
 
   const form = `
-    <div style="display: flex; flex-direction: column; gap: 12px; width: 420px;">
-      <div style="background: #f0f7ff; border-radius: 6px; padding: 8px; border: 1px solid #d2e3fc;">
+    <div style="width: 500px;">
+      <div style="background: #f0f7ff; border-radius: 6px; padding: 8px; border: 1px solid #d2e3fc; margin-bottom: 16px;">
         <div style="font-size: 11px; color: #5f6368; line-height: 1.4;">
           Keys stored locally, only sent to respective APIs
         </div>
       </div>
 
-      <div>
-        <label style="display: block; font-weight: 500; margin-bottom: 4px; color: #202124; font-size: 13px;">
-          OpenAI (Whisper STT)
-        </label>
-        <input
-          type="password"
-          id="configOpenAIKey"
-          value="${openaiKey}"
-          placeholder="sk-..."
-          style="width: 100%; padding: 8px 10px; border: 1px solid #dadce0; border-radius: 6px; font-size: 13px; font-family: 'Space Grotesk', monospace;"
-        />
-        <div style="font-size: 10px; color: #5f6368; margin-top: 2px;">
-          <a href="https://platform.openai.com/api-keys" target="_blank" style="color: #1a73e8; text-decoration: none;">Get key</a>
-        </div>
-      </div>
-
-      <div>
-        <label style="display: block; font-weight: 500; margin-bottom: 4px; color: #202124; font-size: 13px;">
-          ElevenLabs (TTS)
-        </label>
-        <input
-          type="password"
-          id="configElevenLabsKey"
-          value="${elevenlabsKey}"
-          placeholder="..."
-          style="width: 100%; padding: 8px 10px; border: 1px solid #dadce0; border-radius: 6px; font-size: 13px; font-family: 'Space Grotesk', monospace;"
-        />
-        <div style="font-size: 10px; color: #5f6368; margin-top: 2px;">
-          <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" style="color: #1a73e8; text-decoration: none;">Get key</a>
-        </div>
-      </div>
-
-      <div>
-        <label style="display: block; font-weight: 500; margin-bottom: 4px; color: #202124; font-size: 13px;">
-          ElevenLabs (STT)
-        </label>
-        <input
-          type="password"
-          id="configElevenLabsSttKey"
-          value="${elevenlabsSttKey}"
-          placeholder="..."
-          style="width: 100%; padding: 8px 10px; border: 1px solid #dadce0; border-radius: 6px; font-size: 13px; font-family: 'Space Grotesk', monospace;"
-        />
-        <div style="font-size: 10px; color: #5f6368; margin-top: 2px;">
-          <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" style="color: #1a73e8; text-decoration: none;">Get key</a>
-        </div>
-      </div>
+      <table style="width: 100%; border-spacing: 0;">
+        <tr>
+          <td style="width: 140px; padding: 8px 12px 8px 0; vertical-align: top;">
+            <label style="font-weight: 500; color: #202124; font-size: 13px;">
+              OpenAI (Whisper STT)
+            </label>
+          </td>
+          <td style="padding: 8px 0;">
+            <input
+              type="password"
+              id="configOpenAIKey"
+              value="${openaiKey}"
+              placeholder="sk-..."
+              style="width: 100%; padding: 8px 10px; border: 1px solid #dadce0; border-radius: 6px; font-size: 13px; font-family: 'Space Grotesk', monospace;"
+            />
+            <div style="font-size: 10px; color: #5f6368; margin-top: 2px;">
+              <a href="https://platform.openai.com/api-keys" target="_blank" style="color: #1a73e8; text-decoration: none;">Get key</a>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="width: 140px; padding: 8px 12px 8px 0; vertical-align: top;">
+            <label style="font-weight: 500; color: #202124; font-size: 13px;">
+              ElevenLabs (TTS)
+            </label>
+          </td>
+          <td style="padding: 8px 0;">
+            <input
+              type="password"
+              id="configElevenLabsKey"
+              value="${elevenlabsKey}"
+              placeholder="..."
+              style="width: 100%; padding: 8px 10px; border: 1px solid #dadce0; border-radius: 6px; font-size: 13px; font-family: 'Space Grotesk', monospace;"
+            />
+            <div style="font-size: 10px; color: #5f6368; margin-top: 2px;">
+              <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" style="color: #1a73e8; text-decoration: none;">Get key</a>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="width: 140px; padding: 8px 12px 8px 0; vertical-align: top;">
+            <label style="font-weight: 500; color: #202124; font-size: 13px;">
+              ElevenLabs (STT)
+            </label>
+          </td>
+          <td style="padding: 8px 0;">
+            <input
+              type="password"
+              id="configElevenLabsSttKey"
+              value="${elevenlabsSttKey}"
+              placeholder="..."
+              style="width: 100%; padding: 8px 10px; border: 1px solid #dadce0; border-radius: 6px; font-size: 13px; font-family: 'Space Grotesk', monospace;"
+            />
+            <div style="font-size: 10px; color: #5f6368; margin-top: 2px;">
+              <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" style="color: #1a73e8; text-decoration: none;">Get key</a>
+            </div>
+          </td>
+        </tr>
+      </table>
     </div>
   `;
 

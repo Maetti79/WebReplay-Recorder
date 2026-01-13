@@ -75,22 +75,6 @@ Export a complete package containing:
 
 **Use case**: Create professional videos manually using ffmpeg outside the browser.
 
-#### 2. Replay in Tab
-Replay recorded interactions directly on any website, bypassing iframe restrictions:
-- No X-Frame-Options or CORS limitations
-- Works on all websites (Google, Facebook, banking sites, etc.)
-- Visual overlays: animated cursor, click markers, subtitles
-- Survives page navigations with automatic script re-injection
-- Real-time status indicator
-
-**Use case**: Demonstrate workflows, test applications, create tutorials on live websites.
-
-#### 3. Preview in Iframe
-Quick preview of replays within the editor:
-- Fast iteration for testing
-- Works for most websites
-- Displays warnings for blocked sites
-
 ## Installation
 
 ### From Chrome Web Store
@@ -148,30 +132,32 @@ Quick preview of replays within the editor:
 
 ### Replaying a Recording
 
-#### Option 1: Preview in Iframe
-1. In the Timeline Editor, click "Preview"
-2. Click "▶️ Start" to begin replay
-3. Watch events execute in the embedded iframe
-4. Use "⏹️ Stop" to halt playback
+**Replay with Video Export:**
+1. In the Timeline Editor, click "Render Video"
+2. Replay tab opens with side panel control
+3. Click "Start Recording" in side panel
+4. Select the replay tab in screen picker
+5. Check "Share tab audio" to include voiceovers
+6. Watch replay execute with visual overlays
+7. Video automatically downloads when complete
+8. Replay continues across page navigations
 
-#### Option 2: Replay in Tab
-1. In the Timeline Editor, click "Preview"
-2. Click "🚀 Replay in Tab"
-3. A new tab opens and replay begins automatically
-4. Watch the visual overlays guide the replay
-5. Replay continues across page navigations
+**Quick Test (No Recording):**
+You can also test replays without video export, but most websites have iframe restrictions. The video export method above works on all websites.
 
 ### Exporting a Recording
 
-1. In the Timeline Editor, click "Export"
-2. Choose export option:
-   - **Option 1**: Export as ZIP package (for manual rendering)
-   - **Option 2**: [Future] Direct video export
-3. For ZIP export:
-   - Download the package
-   - Extract files
-   - Run `render.sh` (macOS/Linux) or `render.bat` (Windows)
-   - Requires ffmpeg installed on your system
+**Video Export (Recommended):**
+1. In the Timeline Editor, click "Render Video"
+2. Follow the replay and recording steps
+3. Video downloads automatically when complete
+
+**ZIP Package Export (Advanced):**
+1. In the Timeline Editor, click "Export ZIP"
+2. Download the package
+3. Extract files
+4. Run `render.sh` (macOS/Linux) or `render.bat` (Windows)
+5. Requires ffmpeg installed on your system
 
 ## Configuration
 
@@ -209,7 +195,6 @@ browser-extension/
 ├── ui/
 │   ├── popup.html/js                # Extension popup interface
 │   ├── editor.html/js               # Timeline editor with API config
-│   ├── preview.html/js              # Replay preview
 │   ├── sidepanel.html/js            # Video recording control panel
 │   ├── recording-sidepanel.html/js  # Real-time event recording panel
 │   └── modal.js                     # Custom modal/confirm system
@@ -234,14 +219,15 @@ browser-extension/
 4. Changes auto-saved to storage
 5. Voiceovers generated on-demand via API
 
-**Replay (Tab):**
-1. User clicks "Replay in Tab"
-2. Preview page creates new tab with target URL
+**Replay with Video Export:**
+1. User clicks "Render Video" in editor
+2. Replay tab opens with target URL
 3. Background script tracks tab for navigations
 4. Replay script injected once tab loads
 5. Storyboard sent to tab via message passing (voiceovers as base64)
-6. Replay executes with visual overlays
-7. On navigation:
+6. User initiates screen capture via side panel
+7. Replay executes with visual overlays
+8. On navigation:
    - State saved to sessionStorage
    - Background re-injects script after page loads
    - Script auto-resumes from saved state
@@ -298,8 +284,7 @@ The extension requires these permissions:
 
 ## Known Limitations
 
-1. **Iframe Restrictions**: Iframe preview cannot access cross-origin content. Use "Replay in Tab" instead.
-2. **Shadow DOM**: Elements inside closed shadow roots may not be accessible.
+1. **Shadow DOM**: Elements inside closed shadow roots may not be accessible.
 3. **Dynamic Selectors**: Highly dynamic sites (e.g., random class names) may have less reliable selectors.
 4. **File Size**: Very large files in upload events may exceed storage limits.
 5. **API Costs**: ElevenLabs and OpenAI API usage incurs costs based on your plan.
@@ -313,10 +298,11 @@ The extension requires these permissions:
 - Reload the page and try again
 - Check browser console for errors
 
-### Replay Not Working in Tab
+### Replay Not Working
 - Ensure the target website is accessible (not chrome:// URLs)
 - Check if JavaScript is enabled
 - Look for errors in the browser console
+- Make sure you selected the correct tab in the screen picker
 
 ### Export Fails
 - Ensure sufficient disk space
@@ -340,7 +326,7 @@ The extension requires these permissions:
 - `scripts/background.js` - Service worker managing recording/replay state
 - `scripts/content.js` - Captures user interactions on pages
 - `scripts/replay.js` - Executes replay directly in tabs
-- `ui/` - HTML/JS for popup, editor, and preview interfaces
+- `ui/` - HTML/JS for popup, editor, and side panel interfaces
 - `icons/` - Extension icons
 
 ### Debugging
@@ -364,9 +350,10 @@ console.log(JSON.parse(sessionStorage.getItem('webReplayState')));
 
 **Troubleshooting:**
 - Recording not starting → Check page console for content script injection
-- Replay not working → Try "Replay in Tab" instead of iframe
+- Replay not working → Check if correct tab was selected in screen picker
 - Events not executing → Check element selectors in console
 - Navigation breaks replay → Verify background script re-injection
+- Video recording fails → Ensure "Share tab audio" is checked in screen picker
 
 ## Privacy
 
