@@ -16,45 +16,50 @@
       width: 640px;
       padding: 16px;
       font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #ffffff;
+      background: #f8f9fa;
+      min-height: 100vh;
+    }
+
+    p {
+      color: #5f6368;
     }
 
     .container {
       background: #ffffff;
-      border-radius: 12px;
+      border-radius: 16px;
       padding: 24px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      border: 1px solid #e5e7eb;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.05);
+      border: 1px solid #e8eaed;
     }
 
     h1 {
       font-size: 22px;
       font-weight: 600;
       margin-bottom: 20px;
-      color: #111827;
+      color: #202124;
     }
 
     .status {
       padding: 16px;
-      border-radius: 8px;
+      border-radius: 12px;
       margin-bottom: 20px;
       display: flex;
       align-items: center;
       gap: 12px;
-      border: 1px solid #e5e7eb;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e8eaed;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     }
 
     .status.idle {
-      background: #eff6ff;
-      color: #1e40af;
-      border-color: #dbeafe;
+      background: #f0f7ff;
+      color: #1967d2;
+      border-color: #d2e3fc;
     }
 
     .status.recording {
-      background: #fef2f2;
-      color: #991b1b;
-      border-color: #fee2e2;
+      background: #fef7f0;
+      color: #d93025;
+      border-color: #fce8e6;
     }
 
     .status-dot {
@@ -81,19 +86,19 @@
 
     button {
       padding: 12px 20px;
-      border: 1px solid #e5e7eb;
+      border: 1px solid transparent;
       border-radius: 8px;
       font-size: 14px;
       font-weight: 500;
       cursor: pointer;
-      transition: all 0.3s ease-out;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
       font-family: 'Space Grotesk', sans-serif;
     }
 
-    button:hover {
+    button:hover:not(:disabled) {
       transform: translateY(-1px);
-      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
     button:active {
@@ -106,48 +111,49 @@
     }
 
     .btn-primary {
-      background: #10b981;
+      background: #1a73e8;
       color: white;
-      border-color: #10b981;
+      border-color: #1a73e8;
     }
 
-    .btn-primary:hover {
-      background: #059669;
-      border-color: #059669;
-      box-shadow: 0 6px 12px rgba(16, 185, 129, 0.3);
+    .btn-primary:hover:not(:disabled) {
+      background: #1765cc;
+      border-color: #1765cc;
+      box-shadow: 0 2px 8px rgba(26, 115, 232, 0.25);
     }
 
     .btn-danger {
-      background: #ef4444;
+      background: #d93025;
       color: white;
-      border-color: #ef4444;
+      border-color: #d93025;
     }
 
-    .btn-danger:hover {
-      background: #dc2626;
-      border-color: #dc2626;
-      box-shadow: 0 6px 12px rgba(239, 68, 68, 0.3);
+    .btn-danger:hover:not(:disabled) {
+      background: #c5221f;
+      border-color: #c5221f;
+      box-shadow: 0 2px 8px rgba(217, 48, 37, 0.25);
     }
 
     .btn-secondary {
-      background: #f3f4f6;
-      color: #374151;
-      border-color: #e5e7eb;
+      background: #ffffff;
+      color: #5f6368;
+      border-color: #dadce0;
     }
 
-    .btn-secondary:hover {
-      background: #e5e7eb;
+    .btn-secondary:hover:not(:disabled) {
+      background: #f8f9fa;
+      border-color: #dadce0;
     }
 
     .info {
       margin-top: 16px;
       padding: 14px 16px;
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
+      background: #f8f9fa;
+      border: 1px solid #e8eaed;
+      border-radius: 12px;
       font-size: 13px;
-      color: #374151;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      color: #5f6368;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     }
 
     .info-row {
@@ -157,21 +163,44 @@
     }
 
     .info-row strong {
-      color: #111827;
+      color: #202124;
       font-weight: 600;
     }
 
     .recordings {
       margin-top: 20px;
       padding-top: 20px;
-      border-top: 1px solid #e5e7eb;
+      border-top: 1px solid #e8eaed;
     }
 
     .recordings h2 {
       font-size: 15px;
       font-weight: 600;
       margin-bottom: 12px;
-      color: #111827;
+      color: #202124;
+    }
+
+    #recordingsList {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    #recordingsList::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    #recordingsList::-webkit-scrollbar-track {
+      background: #f8f9fa;
+      border-radius: 4px;
+    }
+
+    #recordingsList::-webkit-scrollbar-thumb {
+      background: #dadce0;
+      border-radius: 4px;
+    }
+
+    #recordingsList::-webkit-scrollbar-thumb:hover {
+      background: #bdc1c6;
     }
 
     .recording-item {
@@ -179,16 +208,22 @@
       justify-content: space-between;
       align-items: center;
       padding: 12px 14px;
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
+      background: #f8f9fa;
+      border: 1px solid #e8eaed;
+      border-radius: 12px;
       margin-bottom: 10px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .recording-item:hover {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      border-color: #dadce0;
     }
 
     .recording-id {
       font-size: 12px;
-      color: #6b7280;
+      color: #80868b;
       font-family: 'Space Grotesk', monospace;
       word-break: break-all;
       flex: 1;
@@ -220,17 +255,17 @@
     .settings {
       margin-bottom: 20px;
       padding: 16px;
-      background: #f9fafb;
-      border-radius: 8px;
-      border: 1px solid #e5e7eb;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      background: #f8f9fa;
+      border-radius: 12px;
+      border: 1px solid #e8eaed;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     }
 
     .settings h3 {
       font-size: 13px;
       font-weight: 600;
       text-transform: uppercase;
-      color: #6b7280;
+      color: #5f6368;
       margin-bottom: 16px;
       letter-spacing: 0.05em;
     }
@@ -244,7 +279,7 @@
 
     .setting-row label {
       font-size: 14px;
-      color: #374151;
+      color: #202124;
       display: flex;
       align-items: center;
       gap: 8px;
@@ -255,16 +290,16 @@
       position: relative;
       width: 48px;
       height: 26px;
-      background: #e5e7eb;
-      border: 1px solid #d1d5db;
+      background: #dadce0;
+      border: 1px solid #dadce0;
       border-radius: 13px;
       cursor: pointer;
-      transition: all 0.3s ease-out;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .toggle-switch.active {
-      background: #2563eb;
-      border-color: #2563eb;
+      background: #1a73e8;
+      border-color: #1a73e8;
     }
 
     .toggle-switch::after {
@@ -286,25 +321,25 @@
 
     select {
       padding: 8px 12px;
-      border: 1px solid #e5e7eb;
+      border: 1px solid #dadce0;
       border-radius: 8px;
       font-size: 13px;
       background: #ffffff;
-      color: #111827;
+      color: #202124;
       cursor: pointer;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      transition: all 0.3s ease-out;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       font-family: 'Space Grotesk', sans-serif;
     }
 
-    select:hover {
-      border-color: #2563eb;
+    select:hover:not(:disabled) {
+      border-color: #bdc1c6;
     }
 
     select:focus {
       outline: none;
-      border-color: #2563eb;
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
     }
 
     select:disabled {
@@ -314,16 +349,16 @@
 
     select option {
       background: #ffffff;
-      color: #111827;
+      color: #202124;
     }
 
     .webcam-preview {
       margin-top: 16px;
-      border-radius: 8px;
+      border-radius: 12px;
       overflow: hidden;
       background: #000000;
-      border: 1px solid #e5e7eb;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      border: 1px solid #e8eaed;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       display: none;
     }
 
@@ -401,8 +436,13 @@
       </div>
     </div>
 
-    <div id="recordings" class="recordings hidden">
-      <h2>Recent Recordings</h2>
+    <div id="recordings" class="recordings">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h2 style="margin-bottom: 0;">All Recordings</h2>
+        <button id="deleteAllBtn" class="btn-danger btn-small" style="display: none;" title="Delete all recordings">
+          🗑️ Delete All
+        </button>
+      </div>
       <div id="recordingsList"></div>
     </div>
   </div>

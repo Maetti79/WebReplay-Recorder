@@ -1,17 +1,19 @@
 {
   "manifest_version": 3,
   "name": "WebReplay Recorder",
-  "version": "1.0.3",
+  "version": "1.0.5",
   "description": "Record and replay web interactions with editable timeline",
   "permissions": [
     "activeTab",
     "tabCapture",
     "storage",
+    "unlimitedStorage",
     "scripting",
     "tabs",
     "downloads",
     "offscreen",
-    "webNavigation"
+    "webNavigation",
+    "sidePanel"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -45,5 +47,8 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
+  },
+  "side_panel": {
+    "default_path": "ui/sidepanel.html"
   }
 }

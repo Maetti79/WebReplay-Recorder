@@ -9,47 +9,59 @@ A Chrome extension for recording, editing, and replaying web interactions with A
 - **Screen & Audio Recording**: Captures tab audio and optional webcam video
 - **Robust Element Selectors**: Uses multiple fallback strategies (ID, data-testid, aria-label, CSS path, position)
 - **Cross-Page Support**: Seamlessly tracks user actions across page navigations
+- **Real-Time Side Panel**: Live event monitoring during recording with pause/resume controls
+- **Native Resolution**: Records at actual screen resolution to prevent video blurring
+- **Configurable Settings**: Toggle audio, webcam, and adjust webcam position before recording
 
 ### ✏️ Timeline Editor
 - **Visual Timeline**: Drag-and-drop interface for editing recorded events
 - **Event Management**: Add, edit, delete, and reorder events
 - **Subtitle System**: Create and position subtitles (top/middle/bottom) with customizable styling
-- **AI Voiceovers**: Generate natural-sounding voiceovers using ElevenLabs API
+- **AI Voiceovers**: Generate natural-sounding voiceovers using ElevenLabs or OpenAI APIs
 - **Audio/Video Sync**: Adjust timing offsets for perfect synchronization
+- **API Key Management**: Built-in configuration dialog for OpenAI and ElevenLabs API keys
+- **Project Import/Export**: Load recordings from JSON or ZIP files
 
 ### 🎥 Export Options
 
 #### 1. Direct Video Export (NEW!)
-Export video directly from browser - **no ffmpeg or screen capture required!**
+Export video directly from browser - **no ffmpeg required!**
 
-**How it works:**
-- Renders video on HTML5 canvas (no screenshots needed)
+**Two Export Methods:**
+
+**A. Automated Export (Canvas-based)**
+- Renders video on HTML5 canvas
 - Mixes audio tracks automatically (original + voiceovers)
 - Burns subtitles directly into video frames
 - Exports as WebM using MediaRecorder API
+- Quality presets: 1080p, 720p, 480p
 - **100% automated - just click and wait!**
 
-**Features:**
-- Quality presets: 1080p, 720p, 480p
-- Visualizes events with icons and descriptions
-- Professional gradient backgrounds
-- Progress tracking with live preview
-- Downloads automatically when complete
-- Works within browser security (no special permissions)
+**B. Screen Capture Export (Recommended for navigation)**
+- Opens side panel for recording control + replay tab
+- Uses browser's screen capture at native resolution (no blurring!)
+- **Supports page navigation during recording**
+- Captures tab audio including voiceovers
+- Automatically stops and downloads when replay completes
+- Professional side panel with progress tracking
 
-**Usage:**
+**Usage (Screen Capture):**
+1. Click "Render Video" in editor
+2. Replay tab opens with side panel control
+3. Click "Start Recording" in side panel
+4. Select the **replay tab** in screen picker
+5. **✅ Check "Share tab audio"** to include voiceovers
+6. Recording starts automatically, replay begins
+7. Video downloads when complete
+8. Track progress in real-time via side panel
+
+**Usage (Automated):**
 1. Click "Export" in editor
 2. Select "1. Export as Video (MP4)"
-3. Choose "1. Automated" (recommended)
+3. Choose "1. Automated"
 4. Select quality preset
 5. Wait for export to complete
 6. Video downloads automatically
-
-**What you'll see:**
-- Elegant export window with progress bars
-- Live canvas preview of video being rendered
-- Real-time stats (events processed, video size, time elapsed)
-- Automatic download when complete
 
 #### 2. ZIP Package Export
 Export a complete package containing:
@@ -106,10 +118,16 @@ Quick preview of replays within the editor:
 ### Recording a Session
 
 1. Click the extension icon in your toolbar
-2. Click "Start Recording"
-3. Perform your actions on the webpage
-4. Click "Stop Recording" when finished
-5. The recording will appear in your recordings list
+2. Configure settings (optional):
+   - Toggle audio recording
+   - Toggle webcam recording
+   - Select webcam position
+3. Click "Start Recording"
+4. Side panel opens showing real-time event capture
+5. Perform your actions on the webpage
+6. Use pause/resume controls as needed
+7. Click "Finish" when done
+8. The recording will appear in your recordings list
 
 ### Editing a Recording
 
@@ -157,35 +175,46 @@ Quick preview of replays within the editor:
 
 ## Configuration
 
-### ElevenLabs API (Optional)
-To use AI voiceovers:
-1. Sign up at [ElevenLabs](https://elevenlabs.io/)
-2. Get your API key from the dashboard
-3. In the Timeline Editor, click "Generate Voiceover"
-4. Enter your API key when prompted
-5. Key is stored securely in browser storage
+### API Keys (Optional)
+To use AI voiceovers and speech-to-text:
+
+**Configure via Settings:**
+1. In the Timeline Editor, click the ⚙️ config button
+2. Enter your API keys:
+   - **OpenAI API Key**: For Whisper speech-to-text
+   - **ElevenLabs API Key (TTS)**: For text-to-speech voiceovers
+   - **ElevenLabs API Key (STT)**: For speech-to-text subtitles
+3. Keys are stored securely in browser's localStorage
+
+**Get API Keys:**
+- OpenAI: [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+- ElevenLabs: [elevenlabs.io/app/settings/api-keys](https://elevenlabs.io/app/settings/api-keys)
 
 ### Recording Settings
-- **Screen Recording**: Always enabled for tab content
-- **Webcam**: Optional, toggle in recording interface
-- **Audio**: Automatically captures tab audio
+- **Audio**: Toggle microphone/tab audio recording
+- **Webcam**: Optional webcam recording with preview
+- **Webcam Position**: Bottom-right, bottom-left, top-right, top-left, or sidebar-right
+- **Resolution**: Automatically uses native screen resolution for crisp videos
 
 ## Architecture
 
 ### File Structure
 ```
 browser-extension/
-├── manifest.json              # Extension manifest (V3)
+├── manifest.json                    # Extension manifest (V3)
 ├── scripts/
-│   ├── background.js          # Service worker, manages recording state
-│   ├── content.js             # Captures user interactions
-│   └── replay.js              # Tab replay execution
+│   ├── background.js                # Service worker, manages recording state
+│   ├── content.js                   # Captures user interactions
+│   └── replay.js                    # Tab replay execution
 ├── ui/
-│   ├── popup.html/js          # Extension popup interface
-│   ├── editor.html/js         # Timeline editor
-│   ├── preview.html/js        # Replay preview
-│   └── modal.js               # Custom modal system
-└── icons/                     # Extension icons
+│   ├── popup.html/js                # Extension popup interface
+│   ├── editor.html/js               # Timeline editor with API config
+│   ├── preview.html/js              # Replay preview
+│   ├── sidepanel.html/js            # Video recording control panel
+│   ├── recording-sidepanel.html/js  # Real-time event recording panel
+│   └── modal.js                     # Custom modal/confirm system
+├── offscreen.js                     # Media capture worker
+└── icons/                           # Extension icons
 ```
 
 ### Data Flow
@@ -210,12 +239,26 @@ browser-extension/
 2. Preview page creates new tab with target URL
 3. Background script tracks tab for navigations
 4. Replay script injected once tab loads
-5. Storyboard sent to tab via message passing
+5. Storyboard sent to tab via message passing (voiceovers as base64)
 6. Replay executes with visual overlays
 7. On navigation:
    - State saved to sessionStorage
    - Background re-injects script after page loads
    - Script auto-resumes from saved state
+
+**Video Recording (Screen Capture):**
+1. User clicks "Render Video" in editor
+2. Two tabs open: recording control + replay tab
+3. Recording control tab captures replay tab using getDisplayMedia()
+4. User selects replay tab in screen picker + checks "Share tab audio"
+5. MediaRecorder captures video + audio (including voiceovers)
+6. Replay starts automatically in replay tab
+7. On replay complete:
+   - Message sent to recording control tab
+   - Recording stops after 1 second delay
+   - Video processed and downloaded via background script
+   - Tabs auto-close after 3-second countdown
+8. Base64 encoding used for voiceovers (Blob objects can't pass through Chrome messages)
 
 ## Event Types
 
@@ -259,7 +302,9 @@ The extension requires these permissions:
 2. **Shadow DOM**: Elements inside closed shadow roots may not be accessible.
 3. **Dynamic Selectors**: Highly dynamic sites (e.g., random class names) may have less reliable selectors.
 4. **File Size**: Very large files in upload events may exceed storage limits.
-5. **Voiceover Costs**: ElevenLabs API usage incurs costs based on your plan.
+5. **API Costs**: ElevenLabs and OpenAI API usage incurs costs based on your plan.
+6. **Chrome Message Passing**: Blob objects cannot be sent through Chrome's message passing API, requiring base64 encoding for voiceovers (handled automatically).
+7. **Screen Capture**: Requires manual selection of the correct tab in the screen picker dialog.
 
 ## Troubleshooting
 
@@ -325,9 +370,11 @@ console.log(JSON.parse(sessionStorage.getItem('webReplayState')));
 
 ## Privacy
 
-- All data stored locally in browser (IndexedDB, chrome.storage.local)
+- All data stored locally in browser (IndexedDB, chrome.storage.local, localStorage)
 - No data sent to external servers except:
-  - ElevenLabs API (only when generating voiceovers)
+  - OpenAI API (only when using Whisper speech-to-text)
+  - ElevenLabs API (only when generating voiceovers or transcribing audio)
+- API keys stored in localStorage (never transmitted except to respective APIs)
 - Recordings never leave your device unless you explicitly export them
 
 ## License
@@ -342,7 +389,49 @@ console.log(JSON.parse(sessionStorage.getItem('webReplayState')));
 
 ## Changelog
 
-### v1.0.3 (Current - 2026-01-12)
+### v1.0.5 (Current - 2026-01-13)
+- 🎨 **NEW: Modern UI Design** - Complete redesign with clean white backgrounds
+  - Professional Material Design-inspired color scheme
+  - Consistent styling across all pages (popup, editor, sidepanels)
+  - Improved readability with proper color contrast (#202124, #5f6368)
+  - Smooth animations and transitions
+  - Google-style buttons and form elements
+- ✨ **NEW: Real-Time Recording Panel** - Side panel during event recording
+  - Live event feed showing captured interactions with icons
+  - Pause/Resume toggle for recording control
+  - Live stats (event count, duration timer)
+  - Finish button to complete recording
+  - Elegant event list with animations
+- ✨ **NEW: API Key Configuration** - Built-in settings dialog
+  - ⚙️ Config button in editor toolbar
+  - Manage OpenAI and ElevenLabs API keys
+  - Secure localStorage storage
+  - Helper links to get API keys
+  - Password-protected input fields
+- 🎥 **IMPROVED: Native Resolution Recording** - No more blurry videos!
+  - Automatically detects actual window/screen dimensions
+  - Dynamic bitrate calculation based on resolution
+  - Records at true screen resolution (1920x1080, 2560x1440, etc.)
+  - Removes fixed 720p constraint
+- 🐛 **Fixed**: "No starting URL found" error in video rendering
+  - Editor now checks both `meta.baseUrl` and `meta.url` fields
+  - Better URL detection fallbacks
+  - Clear error messages when URL missing
+- 🐛 **Fixed**: Wrong sidepanel opening during video render
+  - Explicitly sets correct sidepanel path before opening
+  - Separates recording panel from playback panel
+- 🐛 **Fixed**: White text on white background visibility issues
+  - Updated all text colors for proper contrast
+  - Dark gray text (#5f6368) for secondary content
+  - Black text (#202124) for primary content
+- 🎨 **UI Polish**: Added dark gray color for all `<p>` elements across all pages
+
+### v1.0.4 (2026-01-13)
+- ✨ **NEW: Two-Tab Screen Capture Recording** - Record replays with page navigation support
+- 🐛 **Fixed**: Voiceover audio not playing in recording/preview tabs
+- ✨ **Improved**: Recording control UI with instructions and status updates
+
+### v1.0.3 (2026-01-12)
 - 🐛 **Fixed**: Automated video export not working (missing recordingId variable)
 - ✨ **Improved UX**: "Render Video" button now directly exports video
 - ✨ **Improved UX**: "Export ZIP" button simplified (no menu)

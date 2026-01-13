@@ -23,7 +23,28 @@ let videoConfig = null;
 let recordingId = null;
 let replayInitialized = false; // Flag to prevent premature auto-resume
 
+console.log('[Replay] ========================================');
 console.log('[Replay] Content script loaded');
+console.log('[Replay] Checking for existing state...');
+
+// Check immediately if there's state (for debugging)
+const immediateStateCheck = sessionStorage.getItem('webReplayState');
+if (immediateStateCheck) {
+  console.log('[Replay] ✅ Found existing replay state in sessionStorage');
+  try {
+    const state = JSON.parse(immediateStateCheck);
+    console.log('[Replay] State details:');
+    console.log('  - Current event index:', state.currentEventIndex);
+    console.log('  - Total events:', state.storyboard?.timeline?.length || 'unknown');
+    console.log('  - Is replaying:', state.isReplaying);
+    console.log('  - State age:', (Date.now() - state.timestamp) / 1000, 'seconds');
+  } catch (e) {
+    console.error('[Replay] Failed to parse state:', e);
+  }
+} else {
+  console.log('[Replay] No existing replay state found');
+}
+console.log('[Replay] ========================================');
 
 // Storage keys
 const STORAGE_KEY = 'webReplayState';
@@ -311,12 +332,16 @@ async function startRecording() {
 
     console.log('[Replay] Requesting screen capture with preferCurrentTab...');
 
+    // Use actual screen dimensions for video recording to prevent blurring
+    const fallbackWidth = window.screen.width || 1920;
+    const fallbackHeight = window.screen.height || 1080;
+
     // Use getDisplayMedia with preferCurrentTab to auto-select current tab
     const stream = await navigator.mediaDevices.getDisplayMedia({
       video: {
         displaySurface: 'browser',
-        width: { ideal: videoConfig?.width || 1280 },
-        height: { ideal: videoConfig?.height || 720 },
+        width: { ideal: videoConfig?.width || fallbackWidth },
+        height: { ideal: videoConfig?.height || fallbackHeight },
         frameRate: { ideal: 30 }
       },
       audio: false,
@@ -338,7 +363,7 @@ async function startRecording() {
       const removed = originalLength - storyboard.timeline.length;
       console.log('[Replay] ⚠️ Removed', removed, 'navigate event(s) from timeline for recording mode');
       console.log('[Replay] Recording will only capture events on the current page');
-      alert(`⚠️ Note: Removed ${removed} navigation event(s) from recording.\n\nVideo recordings can only capture events on a single page.\nNavigations would break the recording.`);
+      updateStatus(`⚠️ Removed ${removed} navigation event(s) - video recordings capture single page only`, true);
     }
 
     console.log('[Replay] Final timeline length:', storyboard.timeline.length, 'events');
@@ -383,7 +408,6 @@ async function startRecording() {
 
       if (videoChunks.length === 0) {
         console.error('[Replay] No video chunks recorded!');
-        alert('❌ No video data was recorded. The MediaRecorder did not capture any data.');
         updateStatus('❌ No video data recorded', true);
         return;
       }
@@ -393,7 +417,7 @@ async function startRecording() {
 
       if (blob.size === 0) {
         console.error('[Replay] Video blob is 0 bytes!');
-        alert('❌ Video is 0 bytes. Recording failed.');
+        updateStatus('❌ Video is 0 bytes - recording failed', true);
         return;
       }
 
@@ -403,7 +427,7 @@ async function startRecording() {
 
       reader.onerror = (error) => {
         console.error('[Replay] FileReader error:', error);
-        alert('❌ Failed to read video data: ' + error);
+        updateStatus('❌ Failed to read video data', true);
       };
 
       reader.onloadend = async () => {
@@ -442,11 +466,11 @@ async function startRecording() {
             }, 2000);
           } else {
             console.error('[Replay] Download failed:', response?.error);
-            alert('❌ Download failed: ' + (response?.error || 'Unknown error'));
+            updateStatus('❌ Download failed: ' + (response?.error || 'Unknown error'), true);
           }
         } catch (error) {
           console.error('[Replay] Error sending download message:', error);
-          alert('❌ Failed to send download message: ' + error.message);
+          updateStatus('❌ Failed to send download message', true);
         }
       };
 
@@ -458,7 +482,6 @@ async function startRecording() {
       console.error('[Replay] MediaRecorder error:', error);
       stream.getTracks().forEach(track => track.stop());
       updateStatus('❌ Recording error', true);
-      alert('❌ MediaRecorder error: ' + error);
     };
 
     mediaRecorder.onstart = () => {
@@ -497,7 +520,6 @@ async function startRecording() {
     });
 
     updateStatus('❌ Recording failed: ' + error.message, true);
-    alert('❌ Recording failed:\n\n' + error.message + '\n\nCheck console for details.');
 
     // Reset button
     if (recordingButton) {
@@ -526,7 +548,7 @@ async function stopRecording() {
 
   if (!recording) {
     console.error('[Replay] No active recording found in window._activeRecording!');
-    alert('❌ No active recording found. This should not happen.');
+    updateStatus('❌ No active recording found', true);
     return;
   }
 
@@ -1144,6 +1166,72 @@ async function loadVoiceoverFromDB(blobId) {
   });
 }
 
+// Play original recorded audio (microphone/tab audio)
+async function playOriginalAudio() {
+  if (!storyboard.originalAudio || !storyboard.originalAudio.audioBase64) {
+    console.log('[Replay] No original audio to play');
+    return;
+  }
+
+  console.log('[Replay] Playing original recorded audio...');
+  const originalAudio = storyboard.originalAudio;
+
+  try {
+    // Convert base64 to Blob
+    console.log('[Replay] Converting original audio base64 to Blob...');
+    const binaryString = atob(originalAudio.audioBase64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const audioBlob = new Blob([bytes], { type: originalAudio.audioType || 'audio/webm' });
+    console.log('[Replay] ✅ Converted original audio base64 to Blob:', audioBlob.size, 'bytes, type:', audioBlob.type);
+
+    // Create a separate audio element for original audio
+    const originalAudioElement = document.createElement('audio');
+    originalAudioElement.style.display = 'none';
+    originalAudioElement.id = 'webReplayOriginalAudio';
+    document.body.appendChild(originalAudioElement);
+
+    const audioUrl = URL.createObjectURL(audioBlob);
+    originalAudioElement.src = audioUrl;
+    originalAudioElement.volume = 1.0;
+
+    originalAudioElement.onplay = () => {
+      console.log('[Replay] 🎤 Original audio playing via DOM audio element');
+    };
+
+    originalAudioElement.onended = () => {
+      console.log('[Replay] Original audio ended');
+      URL.revokeObjectURL(audioUrl);
+    };
+
+    originalAudioElement.onerror = (error) => {
+      console.error('[Replay] Original audio playback error:', error, originalAudioElement.error);
+      URL.revokeObjectURL(audioUrl);
+    };
+
+    // Apply offset and play
+    const offsetMs = originalAudio.offset || 0;
+    if (offsetMs > 0) {
+      console.log('[Replay] Delaying original audio playback by', offsetMs, 'ms');
+      setTimeout(() => {
+        console.log('[Replay] Starting original audio playback now');
+        originalAudioElement.play().catch(err => {
+          console.error('[Replay] Failed to play original audio:', err);
+        });
+      }, offsetMs);
+    } else {
+      console.log('[Replay] Starting original audio playback immediately');
+      originalAudioElement.play().catch(err => {
+        console.error('[Replay] Failed to play original audio:', err);
+      });
+    }
+  } catch (error) {
+    console.error('[Replay] Failed to play original audio:', error);
+  }
+}
+
 // Start replay
 function startReplay(receivedStoryboard, startIndex = 0, speed = 1) {
   if (isReplaying) {
@@ -1180,9 +1268,10 @@ function startReplay(receivedStoryboard, startIndex = 0, speed = 1) {
 
   updateStatus(`Starting replay... (${startIndex}/${storyboard.timeline.length})`);
 
-  // Only schedule subtitles if starting from beginning
+  // Only schedule subtitles and play original audio if starting from beginning
   if (startIndex === 0) {
     scheduleSubtitles();
+    playOriginalAudio();
   }
 
   // Save initial state
@@ -1296,16 +1385,25 @@ function stopReplay(completed = false) {
       console.log('[Replay] ⚠️ Not in recording mode - no recording to stop');
     }
 
-    // Notify background that replay is complete
-    try {
-      chrome.runtime.sendMessage({
-        type: 'REPLAY_COMPLETE',
-        tabId: chrome?.runtime?.id // Include sender info
-      });
-      console.log('[Replay] Sent REPLAY_COMPLETE message to background (will be forwarded to recording control)');
-    } catch (error) {
-      console.warn('[Replay] Could not send completion message:', error);
-    }
+    // Wait 1.5 seconds after last event before notifying completion
+    // This ensures all animations, transitions, and final UI states are captured
+    // Total time to stop recording: ~2 seconds (1500ms + processing time + 500ms for MediaRecorder shutdown)
+    console.log('[Replay] ⏱️ Waiting 1.5 seconds after last event to capture final animations...');
+    updateStatus('✅ Replay complete, capturing final state...', false);
+
+    setTimeout(() => {
+      console.log('[Replay] ✅ Time elapsed, sending REPLAY_COMPLETE message');
+      // Notify background that replay is complete
+      try {
+        chrome.runtime.sendMessage({
+          type: 'REPLAY_COMPLETE',
+          tabId: chrome?.runtime?.id // Include sender info
+        });
+        console.log('[Replay] Sent REPLAY_COMPLETE message to background (will be forwarded to side panel)');
+      } catch (error) {
+        console.warn('[Replay] Could not send completion message:', error);
+      }
+    }, 1500);
   } else {
     console.log('%c[Replay] ⏹️ Replay Stopped', 'color: #c62828; font-weight: bold');
     console.log(`Events executed: ${currentEventIndex}/${storyboard ? storyboard.timeline.length : '?'}`);
@@ -1327,6 +1425,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === 'START_TAB_REPLAY') {
     console.log('[Replay] Received START_TAB_REPLAY message');
+
+    // Check if we're already replaying (after navigation re-injection)
+    const existingState = loadReplayState();
+    if (existingState && isReplaying) {
+      console.log('[Replay] Already replaying after navigation - ignoring START_TAB_REPLAY');
+      sendResponse({ success: true, alreadyRunning: true });
+      return true;
+    }
 
     // Mark as initialized to prevent auto-resume
     replayInitialized = true;
@@ -1390,21 +1496,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // Check for replay state on script load (might be injected after page load)
 console.log('[Replay] Script loaded, checking for replay state immediately...');
 setTimeout(() => {
-  // Wait for initialization message from editor before auto-resuming
-  if (!replayInitialized) {
-    console.log('[Replay] Not initialized yet - waiting for START_TAB_REPLAY message');
-    return;
-  }
-
-  // Don't auto-resume if in recording mode (button should trigger replay)
-  if (recordingMode) {
-    console.log('[Replay] Recording mode - skipping auto-resume, waiting for button click');
-    return;
-  }
-
+  // Check if there's a valid state in sessionStorage first
   const state = loadReplayState();
+
   if (state) {
-    console.log('[Replay] Found replay state on script load, resuming...');
+    // If we have state, this is a resume after navigation - always resume
+    console.log('[Replay] Found replay state on script load, resuming after navigation...');
     const resumed = resumeReplay();
     if (resumed) {
       console.log('[Replay] ✅ Successfully resumed replay after navigation (script load)');
@@ -1412,6 +1509,18 @@ setTimeout(() => {
       console.warn('[Replay] ⚠️ Failed to resume replay despite having state');
     }
   } else {
+    // No state - this is a fresh load, wait for initialization
+    if (!replayInitialized) {
+      console.log('[Replay] No saved state and not initialized yet - waiting for START_TAB_REPLAY message');
+      return;
+    }
+
+    // Don't auto-resume if in recording mode (button should trigger replay)
+    if (recordingMode) {
+      console.log('[Replay] Recording mode - skipping auto-resume, waiting for button click');
+      return;
+    }
+
     console.log('[Replay] No saved replay state found on script load');
   }
 }, 100);
@@ -1422,20 +1531,18 @@ window.addEventListener('load', () => {
 
   // Wait a bit for page to stabilize
   setTimeout(() => {
-    // Wait for initialization
-    if (!replayInitialized) {
-      console.log('[Replay] Not initialized yet - skipping window.load auto-resume');
+    // Don't try to resume if already replaying
+    if (isReplaying) {
+      console.log('[Replay] Already replaying, skipping window.load resume');
       return;
     }
 
-    // Don't auto-resume if in recording mode
-    if (recordingMode) {
-      console.log('[Replay] Recording mode - skipping window.load auto-resume');
-      return;
-    }
+    // Check if there's a valid state in sessionStorage first
+    const state = loadReplayState();
 
-    // Only try to resume if not already replaying
-    if (!isReplaying) {
+    if (state) {
+      // If we have state, this is a resume after navigation - always resume
+      console.log('[Replay] Found replay state on window load, resuming after navigation...');
       const resumed = resumeReplay();
       if (resumed) {
         console.log('[Replay] ✅ Successfully resumed replay after navigation (window load)');
@@ -1443,7 +1550,19 @@ window.addEventListener('load', () => {
         console.log('[Replay] No replay to resume on window load');
       }
     } else {
-      console.log('[Replay] Already replaying, skipping window.load resume');
+      // No state - this is a fresh load
+      if (!replayInitialized) {
+        console.log('[Replay] Not initialized yet - skipping window.load auto-resume');
+        return;
+      }
+
+      // Don't auto-resume if in recording mode
+      if (recordingMode) {
+        console.log('[Replay] Recording mode - skipping window.load auto-resume');
+        return;
+      }
+
+      console.log('[Replay] No saved replay state found on window load');
     }
   }, 500);
 });

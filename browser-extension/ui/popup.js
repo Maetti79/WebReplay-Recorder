@@ -22,6 +22,7 @@ const eventCountEl = document.getElementById('eventCount');
 const durationEl = document.getElementById('duration');
 const recordingsEl = document.getElementById('recordings');
 const recordingsListEl = document.getElementById('recordingsList');
+const deleteAllBtn = document.getElementById('deleteAllBtn');
 
 // Settings elements
 const audioToggle = document.getElementById('audioToggle');
@@ -106,18 +107,45 @@ async function startRecording(recordingId = null) {
     isRecording = true;
     startTime = Date.now();
 
-    // Update UI
-    statusEl.className = 'status recording';
-    statusTextEl.textContent = 'Recording...';
-    startBtn.classList.add('hidden');
-    stopBtn.classList.remove('hidden');
-    infoEl.classList.remove('hidden');
+    // Open recording side panel
+    try {
+      console.log('[Popup] Opening recording side panel...');
 
-    // Start duration timer
-    durationInterval = setInterval(updateDuration, 100);
+      // Ensure recording ID is in storage for side panel access
+      await chrome.storage.local.set({
+        currentRecordingId: currentRecordingId
+      });
+      console.log('[Popup] Recording ID stored for side panel:', currentRecordingId);
 
-    // Poll for event count
-    setInterval(updateStatus, 1000);
+      await chrome.sidePanel.setOptions({
+        path: 'ui/recording-sidepanel.html',
+        enabled: true
+      });
+
+      // Get current window and open side panel
+      const currentWindow = await chrome.windows.getCurrent();
+      await chrome.sidePanel.open({ windowId: currentWindow.id });
+      console.log('[Popup] Recording side panel opened');
+
+      // Close popup after opening side panel
+      window.close();
+    } catch (error) {
+      console.error('[Popup] Failed to open recording side panel:', error);
+      // Continue without side panel if it fails
+
+      // Update UI (fallback if side panel fails)
+      statusEl.className = 'status recording';
+      statusTextEl.textContent = 'Recording...';
+      startBtn.classList.add('hidden');
+      stopBtn.classList.remove('hidden');
+      infoEl.classList.remove('hidden');
+
+      // Start duration timer
+      durationInterval = setInterval(updateDuration, 100);
+
+      // Poll for event count
+      setInterval(updateStatus, 1000);
+    }
 
   } catch (error) {
     console.error('Error starting recording:', error);
@@ -155,76 +183,112 @@ async function stopRecording() {
 
 // Load recent recordings
 async function loadRecentRecordings() {
-  const result = await chrome.storage.local.get(['lastRecordingId']);
+  try {
+    // Get all keys from storage
+    const allData = await chrome.storage.local.get(null);
 
-  if (result.lastRecordingId) {
+    // Filter for storyboard keys
+    const recordingKeys = Object.keys(allData).filter(key => key.startsWith('storyboard_'));
+
     recordingsEl.classList.remove('hidden');
 
-    const recordingItem = document.createElement('div');
-    recordingItem.className = 'recording-item';
+    if (recordingKeys.length === 0) {
+      recordingsListEl.innerHTML = '<p style="color: #6b7280; font-size: 13px; padding: 12px; text-align: center; font-style: italic;">No recordings yet. Start recording to create your first one!</p>';
+      deleteAllBtn.style.display = 'none';
+      return;
+    }
 
-    const idSpan = document.createElement('div');
-    idSpan.className = 'recording-id';
-    idSpan.textContent = result.lastRecordingId;
-    idSpan.title = result.lastRecordingId; // Show full ID on hover
-
-    const buttonsDiv = document.createElement('div');
-    buttonsDiv.className = 'recording-buttons';
-
-    // Download buttons group
-    const downloadGroup = document.createElement('div');
-    downloadGroup.className = 'download-group';
-
-    const downloadJsonBtn = document.createElement('button');
-    downloadJsonBtn.className = 'btn-secondary btn-small';
-    downloadJsonBtn.textContent = '📄 JSON';
-    downloadJsonBtn.title = 'Download storyboard JSON';
-    downloadJsonBtn.onclick = () => downloadFile(result.lastRecordingId, 'json');
-
-    const downloadAudioBtn = document.createElement('button');
-    downloadAudioBtn.className = 'btn-secondary btn-small';
-    downloadAudioBtn.textContent = '🎤 Audio';
-    downloadAudioBtn.title = 'Download audio recording';
-    downloadAudioBtn.onclick = () => downloadFile(result.lastRecordingId, 'audio');
-
-    const downloadVideoBtn = document.createElement('button');
-    downloadVideoBtn.className = 'btn-secondary btn-small';
-    downloadVideoBtn.textContent = '📹 Video';
-    downloadVideoBtn.title = 'Download webcam video';
-    downloadVideoBtn.onclick = () => downloadFile(result.lastRecordingId, 'video');
-
-    const downloadAllBtn = document.createElement('button');
-    downloadAllBtn.className = 'btn-primary btn-small';
-    downloadAllBtn.textContent = '💾 All';
-    downloadAllBtn.title = 'Download all files';
-    downloadAllBtn.onclick = () => downloadFile(result.lastRecordingId, 'all');
-
-    downloadGroup.appendChild(downloadJsonBtn);
-    downloadGroup.appendChild(downloadAudioBtn);
-    downloadGroup.appendChild(downloadVideoBtn);
-    downloadGroup.appendChild(downloadAllBtn);
-
-    const editBtn = document.createElement('button');
-    editBtn.className = 'btn-primary btn-small';
-    editBtn.textContent = '✏️ Edit';
-    editBtn.title = 'Open in timeline editor';
-    editBtn.onclick = () => openEditor(result.lastRecordingId);
-
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'btn-danger btn-small';
-    deleteBtn.textContent = '🗑️';
-    deleteBtn.title = 'Delete recording';
-    deleteBtn.onclick = () => deleteRecording(result.lastRecordingId);
-
-    buttonsDiv.appendChild(downloadGroup);
-    buttonsDiv.appendChild(editBtn);
-    buttonsDiv.appendChild(deleteBtn);
-
-    recordingItem.appendChild(idSpan);
-    recordingItem.appendChild(buttonsDiv);
-
+    // Show delete all button when there are recordings
+    deleteAllBtn.style.display = 'block';
     recordingsListEl.innerHTML = '';
-    recordingsListEl.appendChild(recordingItem);
+
+    // Parse recordings with metadata
+    const recordings = [];
+    for (const key of recordingKeys) {
+      const recordingId = key.replace('storyboard_', '');
+      try {
+        const storyboard = JSON.parse(allData[key]);
+        recordings.push({
+          id: recordingId,
+          title: storyboard.meta?.title || 'Untitled Recording',
+          createdAt: storyboard.meta?.createdAt || null,
+          eventCount: storyboard.timeline?.length || 0,
+          subtitleCount: storyboard.subtitles?.length || 0
+        });
+      } catch (error) {
+        console.warn('[Popup] Failed to parse recording:', recordingId, error);
+      }
+    }
+
+    // Sort by creation date (newest first)
+    recordings.sort((a, b) => {
+      if (!a.createdAt) return 1;
+      if (!b.createdAt) return -1;
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+
+    // Display all recordings
+    recordings.forEach(recording => {
+      const recordingItem = document.createElement('div');
+      recordingItem.className = 'recording-item';
+
+      const infoDiv = document.createElement('div');
+      infoDiv.style.flex = '1';
+      infoDiv.style.minWidth = '0';
+
+      const titleDiv = document.createElement('div');
+      titleDiv.style.fontWeight = '600';
+      titleDiv.style.fontSize = '14px';
+      titleDiv.style.color = '#202124';
+      titleDiv.style.marginBottom = '4px';
+      titleDiv.textContent = recording.title;
+
+      const metaDiv = document.createElement('div');
+      metaDiv.className = 'recording-id';
+      metaDiv.style.fontSize = '11px';
+
+      const parts = [];
+      if (recording.createdAt) {
+        const date = new Date(recording.createdAt);
+        parts.push(date.toLocaleDateString() + ' ' + date.toLocaleTimeString());
+      }
+      parts.push(`${recording.eventCount} events`);
+      if (recording.subtitleCount > 0) {
+        parts.push(`${recording.subtitleCount} subtitles`);
+      }
+      metaDiv.textContent = parts.join(' • ');
+      metaDiv.title = recording.id; // Show full ID on hover
+
+      infoDiv.appendChild(titleDiv);
+      infoDiv.appendChild(metaDiv);
+
+      const buttonsDiv = document.createElement('div');
+      buttonsDiv.className = 'recording-buttons';
+
+      const editBtn = document.createElement('button');
+      editBtn.className = 'btn-primary btn-small';
+      editBtn.textContent = '✏️ Edit';
+      editBtn.title = 'Open in timeline editor';
+      editBtn.onclick = () => openEditor(recording.id);
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'btn-danger btn-small';
+      deleteBtn.textContent = '🗑️';
+      deleteBtn.title = 'Delete recording';
+      deleteBtn.onclick = () => deleteRecording(recording.id);
+
+      buttonsDiv.appendChild(editBtn);
+      buttonsDiv.appendChild(deleteBtn);
+
+      recordingItem.appendChild(infoDiv);
+      recordingItem.appendChild(buttonsDiv);
+
+      recordingsListEl.appendChild(recordingItem);
+    });
+
+    console.log('[Popup] Loaded', recordings.length, 'recordings');
+  } catch (error) {
+    console.error('[Popup] Failed to load recordings:', error);
   }
 }
 
@@ -288,11 +352,11 @@ async function deleteRecording(recordingId) {
 
     if (response.success) {
       console.log('[Popup] Recording deleted successfully');
-      // Clear the recordings display
-      recordingsEl.classList.add('hidden');
-      recordingsListEl.innerHTML = '<p style="color: #666; font-size: 12px; padding: 8px;">Recording deleted</p>';
 
-      // Wait a moment then reload
+      // Show temporary message
+      recordingsListEl.innerHTML = '<p style="color: #22c55e; font-size: 13px; padding: 12px; text-align: center; font-weight: 500;">✅ Recording deleted successfully</p>';
+
+      // Reload recordings after a moment
       setTimeout(() => {
         loadRecentRecordings();
       }, 1000);
@@ -305,9 +369,82 @@ async function deleteRecording(recordingId) {
   }
 }
 
+// Delete all recordings
+async function deleteAllRecordings() {
+  const confirmed = await showConfirm('Delete ALL recordings? This cannot be undone.\n\nThis will remove:\n- All storyboard JSONs\n- All audio recordings\n- All webcam videos\n- All recording chunks\n- All voiceovers', {
+    title: 'Delete All Recordings',
+    icon: '🗑️',
+    danger: true,
+    confirmText: 'Delete All'
+  });
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    console.log('[Popup] Deleting all recordings...');
+
+    // Get all recording keys
+    const allData = await chrome.storage.local.get(null);
+    const recordingKeys = Object.keys(allData).filter(key => key.startsWith('storyboard_'));
+
+    if (recordingKeys.length === 0) {
+      showModal('No recordings to delete');
+      return;
+    }
+
+    // Extract recording IDs
+    const recordingIds = recordingKeys.map(key => key.replace('storyboard_', ''));
+
+    // Delete each recording
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const recordingId of recordingIds) {
+      try {
+        const response = await chrome.runtime.sendMessage({
+          type: 'DELETE_RECORDING',
+          recordingId
+        });
+
+        if (response && response.success) {
+          successCount++;
+        } else {
+          errorCount++;
+        }
+      } catch (error) {
+        console.error('[Popup] Failed to delete recording:', recordingId, error);
+        errorCount++;
+      }
+    }
+
+    console.log('[Popup] Deleted', successCount, 'recordings,', errorCount, 'errors');
+
+    // Show result message
+    if (errorCount > 0) {
+      recordingsListEl.innerHTML = `<p style="color: #f59e0b; font-size: 13px; padding: 12px; text-align: center; font-weight: 500;">⚠️ Deleted ${successCount} recordings, ${errorCount} failed</p>`;
+    } else {
+      recordingsListEl.innerHTML = `<p style="color: #22c55e; font-size: 13px; padding: 12px; text-align: center; font-weight: 500;">✅ All ${successCount} recordings deleted successfully</p>`;
+    }
+
+    // Hide delete all button
+    deleteAllBtn.style.display = 'none';
+
+    // Reload recordings after a moment
+    setTimeout(() => {
+      loadRecentRecordings();
+    }, 1500);
+
+  } catch (error) {
+    console.error('[Popup] Error deleting all recordings:', error);
+    showModal('Failed to delete all recordings: ' + error.message);
+  }
+}
+
 // Event listeners
 startBtn.addEventListener('click', () => startRecording());
 stopBtn.addEventListener('click', () => stopRecording());
+deleteAllBtn.addEventListener('click', () => deleteAllRecordings());
 
 // Settings event listeners
 audioToggle.addEventListener('click', () => {

@@ -134,6 +134,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === 'PAUSE_MEDIA_CAPTURE') {
+    const result = pauseMediaCapture();
+    sendResponse(result);
+    return true;
+  }
+
+  if (message.type === 'RESUME_MEDIA_CAPTURE') {
+    const result = resumeMediaCapture();
+    sendResponse(result);
+    return true;
+  }
+
   if (message.type === 'GET_MEDIA_DATA') {
     sendResponse({
       success: true,
@@ -455,6 +467,54 @@ async function stopMediaCapture(recordingId) {
       resolve({ success: true, stoppedRecorders });
     }, 500);
   });
+}
+
+// Pause media capture
+function pauseMediaCapture() {
+  try {
+    console.log('[Offscreen] Pausing media capture...');
+
+    // Pause audio recorder
+    if (mediaRecorders.audio && mediaRecorders.audio.state === 'recording') {
+      mediaRecorders.audio.pause();
+      console.log('[Offscreen] Audio recorder paused');
+    }
+
+    // Pause webcam recorder
+    if (mediaRecorders.webcam && mediaRecorders.webcam.state === 'recording') {
+      mediaRecorders.webcam.pause();
+      console.log('[Offscreen] Webcam recorder paused');
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('[Offscreen] Error pausing media capture:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Resume media capture
+function resumeMediaCapture() {
+  try {
+    console.log('[Offscreen] Resuming media capture...');
+
+    // Resume audio recorder
+    if (mediaRecorders.audio && mediaRecorders.audio.state === 'paused') {
+      mediaRecorders.audio.resume();
+      console.log('[Offscreen] Audio recorder resumed');
+    }
+
+    // Resume webcam recorder
+    if (mediaRecorders.webcam && mediaRecorders.webcam.state === 'paused') {
+      mediaRecorders.webcam.resume();
+      console.log('[Offscreen] Webcam recorder resumed');
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('[Offscreen] Error resuming media capture:', error);
+    return { success: false, error: error.message };
+  }
 }
 
 console.log('[Offscreen] Ready for media capture');

@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recording Control</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f8f9fa;
+      color: #202124;
+      padding: 20px;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    p {
+      color: #5f6368;
+    }
+
+    .container {
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.05);
+      padding: 20px;
+      border: 1px solid #e8eaed;
+      max-width: 100%;
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #202124;
+      margin-bottom: 16px;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .icon {
+      font-size: 32px;
+    }
+
+    .instructions {
+      background: #f8f9fa;
+      border: 1px solid #e8eaed;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 16px;
+      font-size: 13px;
+    }
+
+    .instructions h2 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #202124;
+      margin-bottom: 8px;
+    }
+
+    .instructions ol {
+      padding-left: 20px;
+      color: #5f6368;
+      line-height: 1.6;
+    }
+
+    .instructions li {
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+
+    .instructions strong {
+      color: #202124;
+      font-weight: 600;
+    }
+
+    .status {
+      background: #f0f7ff;
+      border: 1px solid #d2e3fc;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 16px;
+      color: #1967d2;
+      font-weight: 500;
+      font-size: 13px;
+      display: none;
+    }
+
+    .status.show {
+      display: block;
+    }
+
+    .status.error {
+      background: #fce8e6;
+      border-color: #f6aea9;
+      color: #c5221f;
+    }
+
+    .status.success {
+      background: #e6f4ea;
+      border-color: #a8dab5;
+      color: #137333;
+    }
+
+    button {
+      width: 100%;
+      background: #1a73e8;
+      color: white;
+      border: 1px solid #1a73e8;
+      border-radius: 8px;
+      padding: 14px 20px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+      margin-bottom: 12px;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      background: #1765cc;
+      border-color: #1765cc;
+      box-shadow: 0 2px 8px rgba(26, 115, 232, 0.25);
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    button.recording {
+      background: #1e8e3e;
+      border-color: #1e8e3e;
+    }
+
+    button.recording:hover:not(:disabled) {
+      background: #188038;
+      border-color: #188038;
+      box-shadow: 0 2px 8px rgba(30, 142, 62, 0.25);
+    }
+
+    button.secondary {
+      background: #d93025;
+      border-color: #d93025;
+    }
+
+    button.secondary:hover:not(:disabled) {
+      background: #c5221f;
+      border-color: #c5221f;
+      box-shadow: 0 2px 8px rgba(217, 48, 37, 0.25);
+    }
+
+    .replay-info {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 16px;
+      display: none;
+      font-size: 13px;
+    }
+
+    .replay-info.show {
+      display: block;
+    }
+
+    .replay-info p {
+      margin-bottom: 6px;
+    }
+
+    .replay-info strong {
+      color: #202124;
+      font-weight: 600;
+    }
+
+    .event-list {
+      background: #f8f9fa;
+      border: 1px solid #e8eaed;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 16px;
+      max-height: 300px;
+      overflow-y: auto;
+      display: none;
+      font-size: 12px;
+    }
+
+    .event-list.show {
+      display: block;
+    }
+
+    .event-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .event-list::-webkit-scrollbar-track {
+      background: #f8f9fa;
+      border-radius: 3px;
+    }
+
+    .event-list::-webkit-scrollbar-thumb {
+      background: #dadce0;
+      border-radius: 3px;
+    }
+
+    .event-list::-webkit-scrollbar-thumb:hover {
+      background: #bdc1c6;
+    }
+
+    .event-list h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #202124;
+      margin-bottom: 8px;
+    }
+
+    .event-item {
+      background: #ffffff;
+      border: 1px solid #e8eaed;
+      border-radius: 12px;
+      padding: 8px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .event-item.completed {
+      border-color: #a8dab5;
+      background: #e6f4ea;
+    }
+
+    .event-item.current {
+      border-color: #8ab4f8;
+      background: #e8f0fe;
+      font-weight: 600;
+    }
+
+    .event-icon {
+      font-size: 16px;
+    }
+
+    .event-details {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .event-type {
+      font-weight: 600;
+      color: #202124;
+      font-size: 13px;
+    }
+
+    .event-text {
+      color: #5f6368;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 12px;
+    }
+
+    .event-status {
+      font-size: 16px;
+    }
+
+    .progress-bar {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+      margin-bottom: 16px;
+      overflow: hidden;
+      display: none;
+    }
+
+    .progress-bar.show {
+      display: block;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+      transition: width 0.3s ease;
+      width: 0%;
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+    }
+
+    .mode-selector {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 16px;
+    }
+
+    .mode-selector label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      color: #202124;
+    }
+
+    .mode-selector input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      accent-color: #10b981;
+    }
+
+    .mode-selector p {
+      margin-top: 8px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>
+      <span class="icon">🎥</span>
+      <span>Video Recording</span>
+    </h1>
+
+    <div class="mode-selector">
+      <label>
+        <input type="checkbox" id="recordModeCheckbox" checked>
+        <span>🎥 Record Video</span>
+      </label>
+      <p id="modeDescription">
+        Recording mode: Screen capture will be requested
+      </p>
+    </div>
+
+    <div class="instructions" id="instructionsRecord">
+      <h2>📋 Recording Instructions</h2>
+      <ol>
+        <li>Click "Start Recording" below</li>
+        <li>Select the <strong>replay tab</strong> in screen picker</li>
+        <li><strong>✅ Check "Share tab audio"</strong> for voiceovers</li>
+        <li>Watch the replay in the tab</li>
+        <li>Video downloads when complete</li>
+      </ol>
+    </div>
+
+    <div class="instructions" id="instructionsDryRun" style="display: none;">
+      <h2>📋 Dry Run Instructions</h2>
+      <ol>
+        <li>Click "Start Dry Run" below</li>
+        <li>Watch the replay execute in the tab</li>
+        <li>Test timing, events, and subtitles</li>
+        <li>Enable "Record Video" when ready to record</li>
+      </ol>
+    </div>
+
+    <div id="replayInfo" class="replay-info">
+      <p><strong>Recording ID:</strong> <span id="recordingId">-</span></p>
+      <p><strong>Timeline Events:</strong> <span id="eventCount">-</span></p>
+      <p><strong>Subtitles:</strong> <span id="subtitleCount">-</span></p>
+      <p><strong>Quality:</strong> <span id="quality">-</span></p>
+    </div>
+
+    <div id="status" class="status">
+      Waiting to start...
+    </div>
+
+    <div class="progress-bar" id="progressBar">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+
+    <div id="eventList" class="event-list">
+      <h3>Event Progress</h3>
+      <div id="eventListContent"></div>
+    </div>
+
+    <button id="startBtn">🎥 Start Recording</button>
+
+    <button id="stopBtn" style="display: none;" class="secondary">⏹️ Stop Recording</button>
+
+    <button id="closeBtn" style="display: none;" class="secondary">
+      Close Tabs Now
+    </button>
+  </div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>

@@ -94,6 +94,12 @@ function recordClick(event) {
 
   recordedEvents.push(clickData);
   console.log('[Recorder] Click recorded:', clickData);
+
+  // Broadcast event to side panel
+  chrome.runtime.sendMessage({
+    type: 'EVENT_RECORDED',
+    event: clickData
+  }).catch(() => {}); // Ignore errors if side panel is closed
 }
 
 // Record input/typing
@@ -124,6 +130,12 @@ function recordInput(event) {
     recordedEvents.push(inputData);
     console.log('[Recorder] Input recorded:', inputData);
     inputTimers.delete(element);
+
+    // Broadcast event to side panel
+    chrome.runtime.sendMessage({
+      type: 'EVENT_RECORDED',
+      event: inputData
+    }).catch(() => {});
   }, 500);
 
   inputTimers.set(element, timer);
@@ -179,6 +191,12 @@ function recordFileUpload(event) {
 
       recordedEvents.push(uploadData);
       console.log('[Recorder] File upload recorded:', validFiles.length, 'file(s)');
+
+      // Broadcast event to side panel
+      chrome.runtime.sendMessage({
+        type: 'EVENT_RECORDED',
+        event: uploadData
+      }).catch(() => {});
     }
   });
 }
@@ -223,6 +241,12 @@ function recordKeydown(event) {
 
     recordedEvents.push(keyData);
     console.log('[Recorder] Key recorded:', keyData);
+
+    // Broadcast event to side panel
+    chrome.runtime.sendMessage({
+      type: 'EVENT_RECORDED',
+      event: keyData
+    }).catch(() => {});
   }
 }
 
@@ -243,6 +267,12 @@ function checkNavigation() {
     recordedEvents.push(navData);
     console.log('[Recorder] Navigation recorded:', navData);
     lastUrl = window.location.href;
+
+    // Broadcast event to side panel
+    chrome.runtime.sendMessage({
+      type: 'EVENT_RECORDED',
+      event: navData
+    }).catch(() => {});
   }
 }
 
@@ -268,6 +298,12 @@ function recordScroll(event) {
 
     recordedEvents.push(scrollData);
     console.log('[Recorder] Scroll recorded:', scrollData);
+
+    // Broadcast event to side panel
+    chrome.runtime.sendMessage({
+      type: 'EVENT_RECORDED',
+      event: scrollData
+    }).catch(() => {});
   }, 300);
 }
 
@@ -446,6 +482,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log('[Recorder] Stopping recording...');
     const events = stopRecording();
     sendResponse({ success: true, events });
+  } else if (message.type === 'PAUSE_RECORDING') {
+    console.log('[Recorder] Pausing recording...');
+    isRecording = false;
+    sendResponse({ success: true });
+  } else if (message.type === 'RESUME_RECORDING') {
+    console.log('[Recorder] Resuming recording...');
+    isRecording = true;
+    sendResponse({ success: true });
   } else if (message.type === 'GET_STATUS') {
     sendResponse({ isRecording, eventCount: recordedEvents.length });
   }

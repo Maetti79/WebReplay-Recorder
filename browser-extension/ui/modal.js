@@ -62,41 +62,56 @@ function initModal() {
       background: #ffffff;
       border-radius: 12px;
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-      max-width: 500px;
-      width: 90%;
-      max-height: 80vh;
-      overflow: auto;
+      max-width: 520px;
+      width: auto;
+      max-height: 90vh;
+      overflow-y: auto;
       animation: modalSlideIn 0.3s ease-out;
       border: 1px solid #e5e7eb;
     }
 
+    .modal-container::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .modal-container::-webkit-scrollbar-track {
+      background: #f8f9fa;
+    }
+
+    .modal-container::-webkit-scrollbar-thumb {
+      background: #dadce0;
+      border-radius: 4px;
+    }
+
+    .modal-container::-webkit-scrollbar-thumb:hover {
+      background: #bdc1c6;
+    }
+
     .modal-content {
-      padding: 32px;
+      padding: 24px;
       text-align: center;
     }
 
     .modal-icon {
-      font-size: 48px;
-      margin-bottom: 16px;
+      font-size: 32px;
+      margin-bottom: 12px;
       line-height: 1;
     }
 
     .modal-title {
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 600;
       color: #111827;
-      margin-bottom: 12px;
+      margin-bottom: 16px;
     }
 
     .modal-message {
-      font-size: 15px;
+      font-size: 14px;
       color: #6b7280;
-      line-height: 1.6;
-      margin-bottom: 24px;
+      line-height: 1.5;
+      margin-bottom: 20px;
       white-space: pre-wrap;
       text-align: left;
-      max-height: 300px;
-      overflow-y: auto;
     }
 
     .modal-buttons {
@@ -269,7 +284,12 @@ function showConfirm(message, options = {}) {
     // Set content
     icon.textContent = options.icon || '❓';
     title.textContent = options.title || 'Confirm';
-    messageEl.textContent = message;
+    // Use innerHTML if message contains HTML tags, otherwise use textContent
+    if (message.includes('<')) {
+      messageEl.innerHTML = message;
+    } else {
+      messageEl.textContent = message;
+    }
 
     // Create buttons
     buttons.innerHTML = '';

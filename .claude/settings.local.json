@@ -19,7 +19,9 @@
       "Bash(ls:*)",
       "Bash(for file in /Users/dennismittmann/Projects/*.md)",
       "Bash(curl:*)",
-      "Bash(open:*)"
+      "Bash(open:*)",
+      "Bash(python3:*)",
+      "Bash(npx --yes sharp-cli:*)"
     ]
   }
 }

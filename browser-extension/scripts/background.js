@@ -200,8 +200,14 @@ async function startRecording(tabId, settings = {}) {
       audioChunks: [],
       webcamChunks: [],
       recordingId: generateId(),
-      settings: recordingSettings
+      settings: recordingSettings,
+      isPaused: false
     };
+
+    // Store recording ID for side panel access
+    await chrome.storage.local.set({
+      currentRecordingId: currentRecording.recordingId
+    });
 
     // Send message to content script to start tracking interactions
     console.log('[Background] Sending START_RECORDING to content script...');
@@ -307,6 +313,66 @@ async function stopRecording() {
 
   } catch (error) {
     console.error('[Background] Error stopping recording:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Pause recording
+async function pauseRecording() {
+  if (!currentRecording.isActive) {
+    return { success: false, error: 'No active recording' };
+  }
+
+  try {
+    // Send pause message to content script
+    if (currentRecording.tabId) {
+      await chrome.tabs.sendMessage(currentRecording.tabId, { type: 'PAUSE_RECORDING' });
+    }
+
+    // Pause media capture in offscreen document
+    try {
+      await chrome.runtime.sendMessage({ type: 'PAUSE_MEDIA_CAPTURE' });
+      console.log('[Background] Media capture paused');
+    } catch (error) {
+      console.warn('[Background] Could not pause media capture:', error);
+    }
+
+    currentRecording.isPaused = true;
+    console.log('[Background] Recording paused');
+    return { success: true };
+
+  } catch (error) {
+    console.error('[Background] Error pausing recording:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Resume recording
+async function resumeRecording() {
+  if (!currentRecording.isActive) {
+    return { success: false, error: 'No active recording' };
+  }
+
+  try {
+    // Send resume message to content script
+    if (currentRecording.tabId) {
+      await chrome.tabs.sendMessage(currentRecording.tabId, { type: 'RESUME_RECORDING' });
+    }
+
+    // Resume media capture in offscreen document
+    try {
+      await chrome.runtime.sendMessage({ type: 'RESUME_MEDIA_CAPTURE' });
+      console.log('[Background] Media capture resumed');
+    } catch (error) {
+      console.warn('[Background] Could not resume media capture:', error);
+    }
+
+    currentRecording.isPaused = false;
+    console.log('[Background] Recording resumed');
+    return { success: true };
+
+  } catch (error) {
+    console.error('[Background] Error resuming recording:', error);
     return { success: false, error: error.message };
   }
 }
@@ -492,6 +558,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   } else if (message.type === 'STOP_RECORDING') {
     stopRecording().then(result => {
+      sendResponse(result);
+    });
+    return true;
+
+  } else if (message.type === 'PAUSE_RECORDING') {
+    pauseRecording().then(result => {
+      sendResponse(result);
+    });
+    return true;
+
+  } else if (message.type === 'RESUME_RECORDING') {
+    resumeRecording().then(result => {
       sendResponse(result);
     });
     return true;
