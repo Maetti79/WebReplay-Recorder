@@ -22,22 +22,11 @@ A Chrome extension for recording, editing, and replaying web interactions with A
 - **API Key Management**: Built-in configuration dialog for OpenAI and ElevenLabs API keys
 - **Project Import/Export**: Load recordings from JSON or ZIP files
 
-### 🎥 Export Options
+### 🎥 Replay & Export Options
 
-#### 1. Direct Video Export (NEW!)
-Export video directly from browser - **no ffmpeg required!**
+#### 1. Render Video (Recommended)
+Record a high-quality video of your replay - **no ffmpeg required!**
 
-**Two Export Methods:**
-
-**A. Automated Export (Canvas-based)**
-- Renders video on HTML5 canvas
-- Mixes audio tracks automatically (original + voiceovers)
-- Burns subtitles directly into video frames
-- Exports as WebM using MediaRecorder API
-- Quality presets: 1080p, 720p, 480p
-- **100% automated - just click and wait!**
-
-**B. Screen Capture Export (Recommended for navigation)**
 - Opens side panel for recording control + replay tab
 - Uses browser's screen capture at native resolution (no blurring!)
 - **Supports page navigation during recording**
@@ -45,7 +34,7 @@ Export video directly from browser - **no ffmpeg required!**
 - Automatically stops and downloads when replay completes
 - Professional side panel with progress tracking
 
-**Usage (Screen Capture):**
+**How to use:**
 1. Click "Render Video" in editor
 2. Replay tab opens with side panel control
 3. Click "Start Recording" in side panel
@@ -55,16 +44,25 @@ Export video directly from browser - **no ffmpeg required!**
 7. Video downloads when complete
 8. Track progress in real-time via side panel
 
-**Usage (Automated):**
-1. Click "Export" in editor
-2. Select "1. Export as Video (MP4)"
-3. Choose "1. Automated"
-4. Select quality preset
-5. Wait for export to complete
-6. Video downloads automatically
+#### 2. Dry Run (Testing)
+Test your replay without recording - perfect for debugging and fine-tuning.
 
-#### 2. ZIP Package Export
-Export a complete package containing:
+- Opens replay tab without video recording
+- Visual overlays: animated cursor, click markers, subtitles
+- Supports page navigation with automatic script re-injection
+- Real-time status indicator
+- No video output - just for testing
+
+**How to use:**
+1. Click "Dry Run" in editor
+2. Replay tab opens and execution begins
+3. Watch events execute with visual feedback
+4. Check console for debugging info
+
+#### 3. ZIP Package Export (Advanced)
+Export a complete package for manual video rendering with ffmpeg.
+
+**Package contents:**
 - `timeline.json` - Full storyboard data
 - `audio.webm` - Original tab audio
 - `webcam.webm` - Webcam recording (if enabled)
@@ -73,7 +71,11 @@ Export a complete package containing:
 - `render.sh` / `render.bat` - Ready-to-run ffmpeg scripts
 - `README.md` - Rendering instructions
 
-**Use case**: Create professional videos manually using ffmpeg outside the browser.
+**How to use:**
+1. Click "Export ZIP" in editor
+2. Download and extract the package
+3. Run `render.sh` (macOS/Linux) or `render.bat` (Windows)
+4. Requires ffmpeg installed on your system
 
 ## Installation
 
@@ -130,34 +132,43 @@ Export a complete package containing:
    - Use offset controls to sync audio/video
 6. Save changes automatically
 
-### Replaying a Recording
+### Testing & Exporting Recordings
 
-**Replay with Video Export:**
+#### Option 1: Dry Run (Test Only)
+Perfect for testing your replay before recording video.
+
+1. In the Timeline Editor, click "Dry Run"
+2. Replay tab opens and execution begins automatically
+3. Watch events execute with visual overlays
+4. Check timing, event execution, and navigation
+5. Tab closes automatically when complete
+
+**Use case**: Test and debug your recording before creating the final video.
+
+#### Option 2: Render Video (Final Export)
+Record a professional video of your replay.
+
 1. In the Timeline Editor, click "Render Video"
 2. Replay tab opens with side panel control
 3. Click "Start Recording" in side panel
 4. Select the replay tab in screen picker
-5. Check "Share tab audio" to include voiceovers
-6. Watch replay execute with visual overlays
-7. Video automatically downloads when complete
-8. Replay continues across page navigations
+5. **✅ Check "Share tab audio"** to include voiceovers
+6. Recording starts, replay begins automatically
+7. Watch progress in side panel
+8. Video downloads when complete
+9. Tabs close after 3-second countdown
 
-**Quick Test (No Recording):**
-You can also test replays without video export, but most websites have iframe restrictions. The video export method above works on all websites.
+**Use case**: Create the final video for sharing, documentation, or tutorials.
 
-### Exporting a Recording
+### Quick Actions
 
-**Video Export (Recommended):**
-1. In the Timeline Editor, click "Render Video"
-2. Follow the replay and recording steps
-3. Video downloads automatically when complete
+The Timeline Editor provides three main action buttons:
 
-**ZIP Package Export (Advanced):**
-1. In the Timeline Editor, click "Export ZIP"
-2. Download the package
-3. Extract files
-4. Run `render.sh` (macOS/Linux) or `render.bat` (Windows)
-5. Requires ffmpeg installed on your system
+1. **🎬 Render Video** - Record a video of your replay (recommended)
+2. **🏃 Dry Run** - Test replay without recording video
+3. **📦 Export ZIP** - Export package for manual ffmpeg rendering (advanced users)
+
+Choose "Render Video" for the final output, "Dry Run" for testing, or "Export ZIP" if you need manual control over video rendering.
 
 ## Configuration
 
@@ -285,11 +296,11 @@ The extension requires these permissions:
 ## Known Limitations
 
 1. **Shadow DOM**: Elements inside closed shadow roots may not be accessible.
-3. **Dynamic Selectors**: Highly dynamic sites (e.g., random class names) may have less reliable selectors.
-4. **File Size**: Very large files in upload events may exceed storage limits.
-5. **API Costs**: ElevenLabs and OpenAI API usage incurs costs based on your plan.
-6. **Chrome Message Passing**: Blob objects cannot be sent through Chrome's message passing API, requiring base64 encoding for voiceovers (handled automatically).
-7. **Screen Capture**: Requires manual selection of the correct tab in the screen picker dialog.
+2. **Dynamic Selectors**: Highly dynamic sites (e.g., random class names) may have less reliable selectors.
+3. **File Size**: Very large files in upload events may exceed storage limits.
+4. **API Costs**: ElevenLabs and OpenAI API usage incurs costs based on your plan.
+5. **Chrome Message Passing**: Blob objects cannot be sent through Chrome's message passing API, requiring base64 encoding for voiceovers (handled automatically).
+6. **Screen Capture**: Requires manual selection of the correct tab in the screen picker dialog.
 
 ## Troubleshooting
 
@@ -415,7 +426,7 @@ console.log(JSON.parse(sessionStorage.getItem('webReplayState')));
 
 ### v1.0.4 (2026-01-13)
 - ✨ **NEW: Two-Tab Screen Capture Recording** - Record replays with page navigation support
-- 🐛 **Fixed**: Voiceover audio not playing in recording/preview tabs
+- 🐛 **Fixed**: Voiceover audio not playing during video recording
 - ✨ **Improved**: Recording control UI with instructions and status updates
 
 ### v1.0.3 (2026-01-12)
@@ -425,17 +436,16 @@ console.log(JSON.parse(sessionStorage.getItem('webReplayState')));
 - 🎨 Updated button labels and tooltips for clarity
 
 ### v1.0.2 (2026-01-12)
-- ✨ **Direct Video Export** - Export videos without ffmpeg! (Automated & Manual methods)
-- ✨ **Speed Control** - Replay at 0.25x-8x speed (iframe & tab replay)
-- ✨ Added "Replay in Tab" feature with navigation persistence
-- ✨ Added fake cursor animation for visual feedback
+- ✨ **Direct Video Export** - Export videos without ffmpeg using screen capture
+- ✨ **Speed Control** - Replay at 0.25x-8x speed during video recording
+- ✨ Added tab-based replay with navigation persistence
+- ✨ Added animated cursor for visual feedback during replay
 - ✨ Added custom modal system replacing native alerts
 - ✨ Implemented ZIP export with ffmpeg scripts
 - ✨ Added hover, focus, blur event recording
 - ✨ Added file upload recording and replay
 - 🎨 Updated UI with Space Grotesk font and modern design
-- 🐛 Fixed iframe cross-origin access handling
-- 🐛 Fixed navigation handling in tab replay
+- 🐛 Fixed navigation handling during replay
 
 ### v1.0.1
 - Initial release with basic recording and replay
